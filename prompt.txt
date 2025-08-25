@@ -1,0 +1,12 @@
+I am trying to create a cache structure for a python script that I am writing to generate reports from data gathered through Canvas LMS's API.  I currently have several caches: term, course, quiz, user, and submissions.
+Term is structured: {term_id: [term_name, [course_id, course_id, ...]],...}
+Course is structured: {course_id: [course_code, course_name, [user_id, user_id, user_id], [quiz_id, quiz_id, quiz_id]], ...}
+Quiz is structured:{quiz_id: [title, type, course_id], ...}
+User is structured:{user_id: [sortable_name, sis_user_id, email, [course_id, course_id, course_id]], ...},
+SUbmissions is structured: {user_id: {submission_id: [acc_type, date], ...}, ...}
+
+These caches are currently saved to and loaded from local json files.  However, quiz and submission data should be freshly gathered for each run. Throughout the run, though, it would be helpful to have a cache for these to avoid repeated GETs.
+
+Each of these caches are updated and accessed from different functions. Sometimes a cache is partially updated by one function and the other portion is updated by another.  For example, Term's term_name is added to the cache with the term_id as the key by one function. Term's course_ids are added as the second element for the list in another function.
+
+How can I simplify the cache structure for these five and avoid bloat?
