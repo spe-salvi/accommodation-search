@@ -2,6 +2,19 @@ import api.api_endpoints as api_endpoints
 import utils.cache_manager as cache_manager
 import pandas as pd
 from itertools import product
+
+
+# TODO: Expand user df so each course is independent (not a list of enrollments)
+# Establish each df to be able to merge left with submission df
+# Each submission cid -> cid info
+# Each submission qid -> qid info
+# Each submission uid -> uid info
+# Should likely map on cids in each df
+
+
+
+
+
 # term_cache = {term_id: {'name': term_name, 'courses': (course_id, course_id, course_id)}, ...}
 def get_term_df():
     term_cache = cache_manager.load_term_cache()
@@ -24,11 +37,11 @@ def get_course_df():
 
         for user_id, quiz_id in product(user_ids, quiz_ids):
             rows.append({
-                "Course ID": course_id,
+                "Course ID Course": course_id,
                 "Course Code": course_code,
                 "Course Name": course_name,
-                "User ID": user_id,
-                "Quiz ID": quiz_id
+                "User ID Course": user_id,
+                "Quiz ID Course": quiz_id
             })
 
     return pd.DataFrame(rows)
@@ -58,7 +71,7 @@ def get_quiz_df():
         ]
         for quiz_id, quiz in quiz_cache.items()
     }
-    return pd.DataFrame.from_dict(data, orient='index', columns=['Title', 'Type', 'Course ID'])
+    return pd.DataFrame.from_dict(data, orient='index', columns=['Title', 'Type', 'Course ID Quiz'])
 
 # submission_cache = {submission_id: {...}, ...}
 def get_submission_df():
@@ -69,9 +82,9 @@ def get_submission_df():
         for course_id, quizzes in courses.items():
             for quiz_id, data in quizzes.items():
                 flattened_rows.append({
-                    "User ID": user_id,
-                    "Course ID": course_id,
-                    "Quiz ID": quiz_id,
+                    "User ID Sub": user_id,
+                    "Course ID Sub": course_id,
+                    "Quiz ID Sub": quiz_id,
                     "Extra Time": data.get("extra_time", 0),
                     "Extra Attempts": data.get("extra_attempts", 0),
                     "Date": data.get("date", "")

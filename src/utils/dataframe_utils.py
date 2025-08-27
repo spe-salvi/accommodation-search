@@ -2,6 +2,10 @@ from quizzes.quizzes import is_accommodated
 import utils.cache_manager as cache_manager
 import utils.getters as getters
 import pandas as pd
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 course_id_df, quiz_id_df, user_id_df, accom_type_df, accom_date_df, quiz_type_df = [], [], [], [], [], []
 
@@ -16,6 +20,7 @@ def cache_to_df(accom_type, date_filter):
                 cids.append(cid)
                 qids.append(qid)
                 uids.append(uid)
+    logging.info(f'Build DF with: num course_ids:{len(cids)}, num quiz_ids:{len(qids)}, num user_ids:{len(uids)}')
     build_df(cids, qids, uids, accom_type, date_filter)
 
 def build_df(course_ids, quiz_ids, user_ids, accom_type, date_filter):
@@ -28,6 +33,7 @@ def build_df(course_ids, quiz_ids, user_ids, accom_type, date_filter):
             for user_id in user_ids:
                 for check_type in accom_checks:
                     for quiz_type in quiz_types:
+                        logging.info(f"→ Checking: C:{course_id}, Q:{quiz_id}, U:{user_id}, Type:{check_type}, QT:{quiz_type}")
                         accom_data = is_accommodated(course_id, quiz_id, user_id, check_type)
 
                         if not accom_data[0]:
@@ -74,19 +80,21 @@ def create_df():
     course_info = course_df[['Course ID', 'Course Code', 'Course Name']].drop_duplicates()
 
     # Merge submission rows with course metadata
-    final_df = submission_df.merge(course_info, on='Course ID', how='left')
+    final_df = submission_df.merge(course_info, left_on=['Course ID Sub'], right_on=['Course ID Course'], how='left')
 
     # Bring in user details
     final_df = final_df.merge(
         user_df[['User ID','Sortable Name','SIS User ID','Email']], 
-        on='User ID', 
+        left_on=['Course ID Sub'], 
+        right_on=['Course ID'],
         how='left'
     )
 
     # Bring in quiz details; course association already exists via submission_df
     final_df = final_df.merge(
-        quiz_df[['Quiz ID','Title','Type']], 
-        on='Quiz ID', 
+        quiz_df[['Quiz ID Quiz','Title','Type']], 
+        left_on=['Course ID Sub'], 
+        right_on=['Course ID Quiz'],
         how='left'
     )
 

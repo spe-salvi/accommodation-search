@@ -1,4 +1,4 @@
-from utils.dataframe_utils import cache_to_df
+from utils.dataframe_utils import cache_to_df, build_df
 from utils.cache_manager import *
 from api.api_params import get_data, get_urls
 import api.api_endpoints as api_endpoints
@@ -43,7 +43,9 @@ def resolve_search_params(cleaned_input:list):
         logger.info(f'elif quiz_ids, Resolving user IDs: {user_ids}')
         resolve_uids(cids, user_ids)
     logger.info('Cache to dataframe')
-    cache_to_df(accom_type, date_filter)
+    # Test below
+    build_df(course_ids, quiz_ids, user_ids, accom_type, date_filter)
+    # cache_to_df(accom_type, date_filter)
 
 # term_cache = {term_id: {'name': term_name, 'courses': (course_id, course_id, course_id)}, ...}
 def resolve_terms(terms):

@@ -180,36 +180,47 @@ def endpoint_quiz(data, term_id=None, course_id=None, quiz_id=None, user_id=None
 def endpoint_submissions(data, term_id=None, course_id=None, quiz_id=None, user_id=None):
     global submission_cache
 
-    if not data or term_id or user_id or not course_id or not quiz_id:
-        logging.error("endpoint_submissions: Invalid input provided; skipping submission cache update.")
+    if not data or not course_id or not quiz_id:
+        logging.error("endpoint_submissions: Incomplete parameters; skipping.")
         return
     
-    submissions = data if isinstance(data, list) else [data]
+    if isinstance(data, dict) and "quiz_submissions" in data:
+        submissions = data["quiz_submissions"]
+    elif isinstance(data, list):
+        submissions = data
+    else:
+        logging.error(f"endpoint_submissions: Unexpected data format: {data}")
+        return
+
     
     for submission in submissions:
-        if 'user_id' not in submission:
+        logging.debug(f"Processing submission: {submission} of {len(submissions)}")
+        uid = submission.get('user_id', None)
+        if not uid:
             logging.error(f"endpoint_submissions: Missing 'user_id' in provided data: {submission}")
             continue
-        uid = submission.get('user_id', None)
-
-        user_dict = submission_cache.setdefault(str(uid), {})
-        course_dict = user_dict.setdefault(course_id, {})
-        quiz_dict = course_dict.setdefault(quiz_id, {})
 
         if not all(key in submission for key in ['extra_time', 'extra_attempts', 'workflow_state']):
             logging.error(f"endpoint_submissions: Missing data in provided data: {submission}")
             continue
 
-        extra_time = submission.get('extra_time', '')
-        extra_attempts = submission.get('extra_attempts', '')
-        workflow = submission.get('workflow_state', '')
-        quiz_dict['extra_time'] = extra_time
-        quiz_dict['extra_attempts'] = extra_attempts
-        quiz_dict['date'] = (
-            'past' if workflow in ['complete', 'graded'] else
-            'future' if workflow == 'settings_only' else
-            ''
-        )
+
+        user_dict = submission_cache.setdefault(str(uid), {})
+        course_dict = user_dict.setdefault(course_id, {})
+
+        workflow = submission['workflow_state']
+
+        course_dict[quiz_id] = {
+            'extra_time': submission.get('extra_time', 0),
+            'extra_attempts': submission.get('extra_attempts', 0),
+            'date': (
+                'past' if workflow in ['complete', 'graded']
+                else 'future' if workflow == 'settings_only'
+                else ''
+            )
+        }
+
+        logging.debug(f"✅ Cached submission: user={uid}, course={course_id}, quiz={quiz_id}")
         
 
 
@@ -236,3 +247,26 @@ def search_urls(url, course_id):
                 'course_id': course_id
             })
     print(f'Quiz cache after url search: {quiz_cache}')
+
+
+def get_cached_submission(user_id, course_id, quiz_id):
+    """
+    Safely retrieve cached submission data for a specific user, course, and quiz.
+    Logs keys if not found for debugging.
+    """
+    uid = str(user_id)
+    if uid not in submission_cache:
+        logging.debug(f"User ID {uid} not in submission_cache. Keys: {list(submission_cache.keys())}")
+        return None
+    if course_id not in submission_cache[uid]:
+        logging.debug(f"Course ID {course_id} not in cache for user {uid}. Keys: {list(submission_cache[uid].keys())}")
+        return None
+    if quiz_id not in submission_cache[uid][course_id]:
+        logging.debug(f"Quiz ID {quiz_id} not in cache for user {uid}, course {course_id}.")
+        return None
+
+    return (
+        submission_cache.get(str(user_id), {})
+                        .get(course_id, {})
+                        .get(quiz_id)
+    )

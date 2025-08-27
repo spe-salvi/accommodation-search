@@ -1,6 +1,11 @@
 from config.config import *
 from api.api_params import get_data
 import api.api_endpoints as api_endpoints
+from api.api_endpoints import get_cached_submission
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 def get_quiz_time(course_id, quiz_id):
     quiz_cache = api_endpoints.quiz_cache
@@ -20,22 +25,29 @@ def get_quiz_time(course_id, quiz_id):
 
 def is_accommodated(course_id, quiz_id, user_id, accom_type):
     submission_cache = api_endpoints.submission_cache
-    cache_cond = (user_id not in submission_cache or 
-        course_id not in submission_cache[user_id] or 
-        quiz_id not in submission_cache[user_id][course_id])
-    if cache_cond:
+    uid = str(user_id)
+
+    logging.debug(f"[Cache Check] user_id={uid} ({type(user_id)}), Keys: {list(submission_cache.keys())}")
+
+    quiz_info = get_cached_submission(uid, course_id, quiz_id)
+
+    if not quiz_info:
         get_data('c_quiz_submissions', course_id=course_id, quiz_id=quiz_id)
-    submission_cache = api_endpoints.submission_cache
-    if cache_cond:
+        quiz_info = get_cached_submission(uid, course_id, quiz_id)
+
+    if not quiz_info:
         get_data('n_quiz_submissions', course_id=course_id, quiz_id=quiz_id)
-    submission_cache = api_endpoints.submission_cache
-    if cache_cond:
-        return (False, 'NA') 
-    
-    time = submission_cache[user_id][course_id][quiz_id]['extra_time']
-    attempts = submission_cache[user_id][course_id][quiz_id]['extra_attempts']
-    date_submitted = submission_cache[user_id][course_id][quiz_id]['date']
-    
+        quiz_info = get_cached_submission(uid, course_id, quiz_id)
+
+    if not quiz_info:
+        return (False, 'NA')
+
+    # Pull values from the cache
+    time = quiz_info['extra_time']
+    attempts = quiz_info['extra_attempts']
+    date_submitted = quiz_info['date']
+
+    # Check accommodation
     if accom_type == 'time':
         quiz_cache = api_endpoints.quiz_cache
         if quiz_id not in quiz_cache:
@@ -47,8 +59,10 @@ def is_accommodated(course_id, quiz_id, user_id, accom_type):
 
         if time == (time_limit * 2) and time > 0:
             return (True, date_submitted)
+
     elif accom_type == 'attempts':
         print(f'Attempts: {attempts}')
         if attempts > 0:
             return (True, date_submitted)
+
     return (False, 'NA')
