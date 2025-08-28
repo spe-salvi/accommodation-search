@@ -76,34 +76,34 @@ def create_df():
     quiz_df = getters.get_quiz_df().reset_index().rename(columns={'index':'Quiz ID'})
     submission_df = getters.get_submission_df()
 
-    # Pull just the unique course-level info (code & name) by dropping the duplicates
-    course_info = course_df[['Course ID', 'Course Code', 'Course Name']].drop_duplicates()
+    print(course_df)
+    print(user_df)
+    print(quiz_df)
+    print(submission_df)
 
-    # Merge submission rows with course metadata
-    final_df = submission_df.merge(course_info, left_on=['Course ID Sub'], right_on=['Course ID Course'], how='left')
+    course_df["Course ID Course"] = course_df["Course ID Course"].astype(str)
+    user_df["User ID"] = user_df["User ID"].astype(str)
+    quiz_df["Quiz ID"] = quiz_df["Quiz ID"].astype(str)
+    submission_df["Course ID Sub"] = submission_df["Course ID Sub"].astype(str).where(submission_df["Course ID Sub"].notna(), "")
+    submission_df["User ID Sub"] = submission_df["User ID Sub"].astype(str).where(submission_df["User ID Sub"].notna(), "")
+    submission_df["Quiz ID Sub"] = submission_df["Quiz ID Sub"].astype(str).where(submission_df["Quiz ID Sub"].notna(), "")
 
-    # Bring in user details
-    final_df = final_df.merge(
-        user_df[['User ID','Sortable Name','SIS User ID','Email']], 
-        left_on=['Course ID Sub'], 
-        right_on=['Course ID'],
-        how='left'
+    # Merge logic remains the same, plus cleanup:
+    final_df = (
+        submission_df
+        .merge(course_df, left_on='Course ID Sub', right_on='Course ID Course', how='left')
+        .drop(columns=['Course ID Course'])
+        .merge(user_df, left_on=['Course ID Sub', 'User ID Sub'], right_on=['Course ID User', 'User ID'], how='left')
+        .drop(columns=['Course ID User'])
+        .merge(quiz_df, left_on=['Course ID Sub', 'Quiz ID Sub'], right_on=['Course ID Quiz', 'Quiz ID'], how='left')
+        .drop(columns=['Course ID Quiz'])
     )
 
-    # Bring in quiz details; course association already exists via submission_df
-    final_df = final_df.merge(
-        quiz_df[['Quiz ID Quiz','Title','Type']], 
-        left_on=['Course ID Sub'], 
-        right_on=['Course ID Quiz'],
-        how='left'
-    )
-
-    # Optional: Order columns for readability
     final_df = final_df[[
         'User ID', 'Sortable Name', 'SIS User ID', 'Email',
-        'Course ID', 'Course Code', 'Course Name',
+        'Course ID Sub', 'Course Code', 'Course Name',
         'Quiz ID', 'Title', 'Type',
         'Extra Time', 'Extra Attempts', 'Date'
-    ]]
+    ]].rename(columns={'Course ID Sub': 'Course ID'})
 
     return final_df

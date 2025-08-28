@@ -44,7 +44,7 @@ def get_course_df():
                 "Quiz ID Course": quiz_id
             })
 
-    return pd.DataFrame(rows)
+    return pd.DataFrame(rows).drop_duplicates()
 
 # user_cache = {user_id: {'name': ..., 'sis_id': ..., 'email': ..., 'courses': (...)}, ...}
 def get_user_df():
@@ -58,7 +58,14 @@ def get_user_df():
         ]
         for user_id, user in user_cache.items()
     }
-    return pd.DataFrame.from_dict(data, orient='index', columns=['Sortable Name', 'SIS User ID', 'Email', 'Course IDs'])
+    df = pd.DataFrame.from_dict(data, orient='index', columns=['Sortable Name', 'SIS User ID', 'Email', 'Course ID User'])
+    # Ensure course IDs are lists
+    df['Course ID User'] = df['Course ID User'].apply(lambda x: x if isinstance(x, list) else [])
+
+    # Explode the Course ID User list
+    df = df.explode('Course ID User', ignore_index=True)
+
+    return df
 
 # quiz_cache = {quiz_id: {'title': ..., 'type': ..., 'course_id': ...}, ...}
 def get_quiz_df():
