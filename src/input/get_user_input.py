@@ -3,7 +3,7 @@ from tkinter import ttk
 import ttkbootstrap as ttkb
 from ttkbootstrap.constants import *
 import logging
-import utils.resolvers as resolvers
+import utils.populate_cache as populate_cache
 import utils.dataframe_utils as dataframe_utils
 import datetime
 
@@ -83,7 +83,6 @@ def create_input_form():
             quiz_id = None if not quiz_id else quiz_id
             user_id = None if not user_id else user_id
 
-
             input_data = [term_id, course_id, quiz_id, user_id, accom_type, quiz_type, date_filter]
             logger.info(f'Original input_data: {input_data}')
             cleaned_input = process_input(input_data)
@@ -92,10 +91,13 @@ def create_input_form():
                 import utils.cache_manager as cache_manager
                 logger.info("Clearing all caches")
                 cache_manager.clear_all_caches()
-            logger.info("Calling resolve_search_params")
-            resolvers.resolve_search_params(cleaned_input)
+            logger.info("Calling populate_cache")
+            populate_cache.call_populate(term_ids=cleaned_input[0], course_ids=cleaned_input[1],  quiz_ids=cleaned_input[2], user_ids=cleaned_input[3])
+            logger.info("Building results DataFrame")
+            logger.info(f'Len cleaned input: {len(cleaned_input)}')
             logger.info("Creating results DataFrame")
-            results_df = dataframe_utils.create_df()
+            results_df = dataframe_utils.create_df(course_ids=cleaned_input[1], quiz_ids=cleaned_input[2], user_ids=cleaned_input[3],
+              accom_type=cleaned_input[4], quiz_type=cleaned_input[5], date_filter=cleaned_input[6])
             root.destroy()
 
             logger.info("Generated results DataFrame")
@@ -121,7 +123,6 @@ def create_input_form():
     root.mainloop()
 
 def process_input(input_data):
-
     if type(input_data[0]) != list and input_data[0] is not None:
         terms = [input_data[0]]
     elif type(input_data[0]) == list:
@@ -145,7 +146,10 @@ def process_input(input_data):
     if input_data[4] != None:
         accom_type = input_data[4]
     else: accom_type = None
+    if input_data[5] != None:
+        quiz_type = input_data[5]
+    else: quiz_type = None
     if input_data[6] != None:
         date_filter = input_data[6]
     else: date_filter = None
-    return (terms, course_ids, quiz_ids, user_ids, accom_type, date_filter)
+    return (terms, course_ids, quiz_ids, user_ids, accom_type, quiz_type, date_filter)
