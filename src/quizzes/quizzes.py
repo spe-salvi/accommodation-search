@@ -1,3 +1,4 @@
+from time import time
 from config.config import *
 import api.api_endpoints as api_endpoints
 import logging
@@ -9,22 +10,27 @@ def is_accommodated(course_id, quiz_id, user_id, accom_type):
     submission_cache = api_endpoints.submission_cache
     uid = str(user_id)
 
-    logging.debug(f"[Cache Check] user_id={uid} ({type(user_id)}), Keys: {list(submission_cache.keys())}")
+    logger.info(f"[Cache Check] user_id={uid} ({type(user_id)}), Keys: {list(submission_cache.keys())}")
 
     quiz_info = get_cached_submission(uid, course_id, quiz_id)
 
-    time = quiz_info['extra_time']
+    if quiz_info is None:
+        logger.warning(f"No cached submission found for user {uid}, course {course_id}, quiz {quiz_id}")
+        return (False, 'NA')
+    
+    extra_time = quiz_info['extra_time']
     attempts = quiz_info['extra_attempts']
     date_submitted = quiz_info['date']
 
-    if accom_type == 'time':
-        quiz_cache = api_endpoints.quiz_cache
-        time_limit = quiz_cache[quiz_id]['time_limit']
 
-        if time == (time_limit * 2) and time > 0:
+
+    logger.info(f"Quiz info: extra_time={extra_time}, attempts={attempts}, date_submitted={date_submitted}")
+
+    if accom_type == 'time' and extra_time is not None:
+        if extra_time > 0:
             return (True, date_submitted)
 
-    elif accom_type == 'attempts':
+    elif accom_type == 'attempts' and attempts is not None:
         print(f'Attempts: {attempts}')
         if attempts > 0:
             return (True, date_submitted)
@@ -37,16 +43,18 @@ def get_cached_submission(user_id, course_id, quiz_id):
     Logs keys if not found for debugging.
     """
     submission_cache = api_endpoints.submission_cache
+    logger.info(f'[get_cached_submission] user_id={user_id}, course_id={course_id}, quiz_id={quiz_id}')
+    # logger.info(f'Submission cache [get_cached_submission]:\n{submission_cache}')
 
     uid = str(user_id)
     if uid not in submission_cache:
-        logging.debug(f"User ID {uid} not in submission_cache. Keys: {list(submission_cache.keys())}")
+        logger.info(f"User ID {uid} not in submission_cache. Keys: {list(submission_cache.keys())}")
         return None
     if course_id not in submission_cache[uid]:
-        logging.debug(f"Course ID {course_id} not in cache for user {uid}. Keys: {list(submission_cache[uid].keys())}")
+        logger.info(f"Course ID {course_id} not in cache for user {uid}. Keys: {list(submission_cache[uid].keys())}")
         return None
     if quiz_id not in submission_cache[uid][course_id]:
-        logging.debug(f"Quiz ID {quiz_id} not in cache for user {uid}, course {course_id}.")
+        logger.info(f"Quiz ID {quiz_id} not in cache for user {uid}, course {course_id}.")
         return None
 
     uid = str(user_id)

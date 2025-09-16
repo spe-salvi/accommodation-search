@@ -1,10 +1,15 @@
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from utils.cache_manager import *
 from api.api_params import get_data
 import logging
 import utils.cache_manager as cache_manager
+import config.config as config
+import api.api_endpoints as api_endpoints
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+all_course_ids, all_user_ids, all_quiz_ids = set(), set(), set()
 
 def call_populate(term_ids=None, course_ids=None, quiz_ids=None, user_ids=None):
     logger.info("Starting cache population process")
@@ -28,63 +33,155 @@ def call_populate(term_ids=None, course_ids=None, quiz_ids=None, user_ids=None):
 def populate_term_cache(term_ids, course_ids=None):
     logger.info("Populating term cache")
 
-    if term_ids:
-        for tid in term_ids:
-            get_data('term', term_id=tid)
-            if not course_ids:
-                get_data('courses', term_id=tid)
-    else:
+    if not term_ids:
         logger.error("No term IDs provided for populating term cache")
+        return
+
+    def process_term(tid):
+        logger.info(f"Processing term {tid}")
+        get_data("term", term_id=tid)   # cache writes happen under lock
+        if not course_ids:
+            get_data("courses", term_id=tid)
+        logger.info(f"Finished processing term {tid}")
+
+    with ThreadPoolExecutor(max_workers=config.NUM_WORKERS) as executor:
+        executor.map(process_term, term_ids)
 
 
 def populate_course_cache(course_ids):
+    global all_user_ids, all_quiz_ids
     logger.info("Populating course cache")
+    logger.info(f"Initial all_user_ids: {all_user_ids}")
+    logger.info(f"Initial all_quiz_ids: {all_quiz_ids}")
 
-    if course_ids:
-        for cid in course_ids:
-            get_data('course', course_id=cid)
-            get_data('c_quizzes', course_id=cid)
-            get_data('n_quizzes', course_id=cid)
-            get_data('course_users', course_id=cid)
+    if not course_ids:
+        logger.error("No course IDs provided for populating course cache")
+        return
+
+    def process_course(cid):
+        try:
+            logger.info(f"Processing course {cid}")
+            # Each call handles its own locking inside endpoint
+            get_data("course", course_id=cid)
+            get_data("c_quizzes", course_id=cid)
+            get_data("n_quizzes", course_id=cid)
+            get_data("course_users", course_id=cid)
+            logger.info(f"Finished processing course {cid}")
+        except Exception as e:
+            logger.error(f"Error processing course {cid}: {e}")
+            raise
+
+    # Run one thread per course (cap to avoid too many threads)
+    with ThreadPoolExecutor(max_workers=config.NUM_WORKERS) as executor:
+        futures = {executor.submit(process_course, cid): cid for cid in course_ids}
+        for future in as_completed(futures):
+            cid = futures[future]
+            try:
+                future.result()
+                logger.info(f"Completed course {cid}")
+            except Exception:
+                logger.error(f"Course {cid} failed")
 
     course_cache = cache_manager.load_course_cache()
+    for cid in course_ids:
+        if cid not in course_cache:
+            logger.warning(f"Course ID {cid} not found in course cache after population.")
+        for quiz_id in course_cache.get(cid, {}).get("quizzes", []):
+            all_quiz_ids.add(quiz_id)
+        for user_id in course_cache.get(cid, {}).get("users", []):
+            all_user_ids.add(user_id)
+
     logger.info(f"Loaded {len(course_cache)} courses from cache.")
 
+
+
 def populate_user_cache(term_ids, course_ids, user_ids):
+    global all_course_ids, all_user_ids
     logger.info("Populating user cache")
-    term_ids = term_ids if term_ids else None #all_term_ids
-    course_ids = course_ids if course_ids else None #all_course_ids
-    user_ids = user_ids if user_ids else None #all_user_ids
+    logger.info(f"Initial all_user_ids: {all_user_ids}")
+    logger.info(f"Initial all_course_ids: {all_course_ids}")
 
-    for cid in course_ids:
-        get_data('course_users', course_id=cid)
+    term_ids = term_ids if term_ids else list(config.TERMS.keys())
+    course_ids = course_ids if course_ids else list(all_course_ids)
+    user_ids = user_ids if user_ids else list(all_user_ids)
 
+    # Threaded fetching of course users
+    with ThreadPoolExecutor(max_workers=config.NUM_WORKERS) as executor:
+        futures = [executor.submit(get_data, 'course_users', course_id=cid) for cid in course_ids]
+        for f in as_completed(futures):
+            _ = f.result()
 
-    for term_id in term_ids:
-        for user_id in user_ids:
-            get_data('enrollments', term_id=term_id, user_id=user_id)
+    # Threaded fetching of enrollments
+    with ThreadPoolExecutor(max_workers=config.NUM_WORKERS) as executor:
+        futures = [
+            executor.submit(get_data, 'enrollments', term_id=term_id, user_id=uid)
+            for term_id in term_ids for uid in user_ids
+        ]
+        for f in as_completed(futures):
+            _ = f.result()
+
+    # Refresh cache after threaded fetches
+    user_cache = cache_manager.load_user_cache()
+    logger.info(f"Loaded {len(user_cache)} users from cache.")
+    for uid in user_ids:
+        if uid not in user_cache:
+            logger.warning(f"User ID {uid} not found in user cache after population.")
+        for course_id in user_cache.get(uid, {}).get("courses", []):
+            all_course_ids.add(course_id)
+
 
 
 def populate_quiz_cache(course_ids, quiz_ids):
+    global all_course_ids, all_quiz_ids
     logger.info("Populating quiz cache")
-    course_ids = course_ids if course_ids else None #all_course_ids
-    quiz_ids = quiz_ids if quiz_ids else None #all_quiz_ids
+    logger.info(f"Initial all_course_ids: {all_course_ids}")
+    logger.info(f"Initial all_quiz_ids: {all_quiz_ids}")
 
-    for course_id in course_ids:
-        for quiz_id in quiz_ids:
-            get_data('c_quiz', course_id=course_id, quiz_id=quiz_id)
-            get_data('n_quiz', course_id=course_id, quiz_id=quiz_id)
+    course_ids = course_ids if course_ids else list(all_course_ids)
+    quiz_ids = quiz_ids if quiz_ids else list(all_quiz_ids)
+
+    # Threaded fetching of quizzes (both classic and new)
+    with ThreadPoolExecutor(max_workers=config.NUM_WORKERS) as executor:
+        futures = []
+        for course_id in course_ids:
+            for quiz_id in quiz_ids:
+                futures.append(executor.submit(get_data, 'c_quiz', course_id=course_id, quiz_id=quiz_id))
+                futures.append(executor.submit(get_data, 'n_quiz', course_id=course_id, quiz_id=quiz_id))
+
+        for f in as_completed(futures):
+            _ = f.result()
+
+    quiz_cache = api_endpoints.quiz_cache
+    for qid in quiz_ids:
+        if qid not in quiz_cache:
+            logger.warning(f"Quiz ID {qid} not found in quiz cache after population.")
+        for course_id in quiz_cache.get(qid, {}).get("courses", []):
+            all_course_ids.add(course_id)
     #search_urls
 
 def populate_submissions_cache(course_ids, quiz_ids):
+    global all_course_ids, all_quiz_ids
     logger.info("Populating submissions cache")
-    course_ids = course_ids if course_ids else None #all_course_ids
-    quiz_ids = quiz_ids if quiz_ids else None #all_quiz_ids
+    logger.info(f"Initial all_course_ids: {all_course_ids}")
+    logger.info(f"Initial all_quiz_ids: {all_quiz_ids}")
 
-    for course_id in course_ids:
-        for quiz_id in quiz_ids:
-            get_data('c_quiz_submissions', course_id=course_id, quiz_id=quiz_id)
-            get_data('n_quiz_submissions', course_id=course_id, quiz_id=quiz_id)
+    course_ids = course_ids if course_ids else list(all_course_ids)
+    quiz_ids = quiz_ids if quiz_ids else list(all_quiz_ids)
+
+    with ThreadPoolExecutor(max_workers=config.NUM_WORKERS) as executor:
+        futures = []
+        for course_id in course_ids:
+            for quiz_id in quiz_ids:
+                futures.append(executor.submit(get_data, 'c_quiz_submissions', course_id=course_id, quiz_id=quiz_id))
+                futures.append(executor.submit(get_data, 'n_quiz_submissions', course_id=course_id, quiz_id=quiz_id))
+
+        for f in as_completed(futures):
+            try:
+                f.result()
+            except Exception as e:
+                logger.error(f"Error populating submissions cache: {e}")
+
+    logger.info("Finished populating submissions cache")
 
 
 def get_courses_from_terms(term_ids):

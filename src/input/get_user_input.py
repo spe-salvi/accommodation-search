@@ -74,8 +74,8 @@ def create_input_form():
             course_id = '10348'
             quiz_id = '40122'
             user_id = '5961'
-            accom_type = 'time'
-            quiz_type ='classic'
+            accom_type = 'both'#'time'
+            quiz_type ='both'#'classic'
             date_filter = 'both'
 
             term_id = None if not term_id else term_id

@@ -47,7 +47,7 @@ def fetch_course_df():
 
     df = pd.DataFrame(rows).drop_duplicates()
     # normalize keys
-    logging.info(f'{df}')
+    # logging.info(f'{df}')
     df["Course ID Course"] = df["Course ID Course"].astype("string").str.strip()
     df["User ID Course"]   = df["User ID Course"].astype("string").str.strip()
     df["Quiz ID Course"]   = df["Quiz ID Course"].astype("string").str.strip()
@@ -102,16 +102,57 @@ def fetch_quiz_df():
     df["Course ID Quiz"] = df["Course ID Quiz"].astype("string").str.strip()
     return df
 
-# submission_cache = {submission_id: {...}, ...}
+# submission_cache = {user_id: {course_id: {quiz_id: {'extra_time': extra_time, 'extra_attempts': extra_attempts, 'date': date}, ...}, ...}, ...}
+# def fetch_submission_df():
+#     logger.info("Fetching submission cache (fetch_submission_df).")
+#     submission_cache = api_endpoints.submission_cache
+#     logger.info(f"Loaded submission cache with {len(submission_cache)} users.")
+#     # logger.info(f"Submission cache: {submission_cache}")
+
+#     rows = []
+#     for user_id, courses in submission_cache:
+#         logger.debug(f"Processing submissions for User ID: {user_id} ||| Courses: {list(courses)}")
+#         for course_id, quizzes in courses:
+#             logger.debug(f" Processing Course ID: {course_id} ||| Quizzes: {list(quizzes)}")
+#             for quiz_id, data in quizzes:
+#                 logger.debug(f"  Processing Quiz ID: {quiz_id} ||| Data: {data}")
+#                 rows.append({
+#                     "User ID Sub": user_id,
+#                     "Course ID Sub": course_id,
+#                     "Quiz ID Sub": quiz_id,
+#                     "Extra Time": data.get("extra_time", 0),
+#                     "Extra Attempts": data.get("extra_attempts", 0),
+#                     "Date": data.get("date", "")
+#                 })
+
+#     df = pd.DataFrame(rows)
+#     # normalize keys
+#     for c in ["User ID Sub", "Course ID Sub", "Quiz ID Sub"]:
+#         df[c] = df[c].astype("string").str.strip()
+#     return df
+
 def fetch_submission_df():
     logger.info("Fetching submission cache (fetch_submission_df).")
-    submission_cache = api_endpoints.submission_cache
+    submission_cache = api_endpoints.submission_cache or {}
     logger.info(f"Loaded submission cache with {len(submission_cache)} users.")
+    # logger.info(f"Submission cache: {submission_cache}")
 
     rows = []
     for user_id, courses in submission_cache.items():
+        if not isinstance(courses, dict):
+            logger.warning(f"User {user_id} has non-dict courses: {courses}")
+            continue
+
         for course_id, quizzes in courses.items():
+            if not isinstance(quizzes, dict):
+                logger.warning(f" Course {course_id} has non-dict quizzes: {quizzes}")
+                continue
+
             for quiz_id, data in quizzes.items():
+                if not isinstance(data, dict):
+                    logger.warning(f"  Quiz {quiz_id} has non-dict data: {data}")
+                    continue
+
                 rows.append({
                     "User ID Sub": user_id,
                     "Course ID Sub": course_id,
@@ -122,7 +163,8 @@ def fetch_submission_df():
                 })
 
     df = pd.DataFrame(rows)
-    # normalize keys
-    for c in ["User ID Sub", "Course ID Sub", "Quiz ID Sub"]:
-        df[c] = df[c].astype("string").str.strip()
+    df["Course ID Sub"] = df["Course ID Sub"].astype(str)
+    df["Quiz ID Sub"]   = df["Quiz ID Sub"].astype(str)
+    df["User ID Sub"]   = df["User ID Sub"].astype(str)
+    # logger.info(f'Final submission df before normalization:\n{df}')
     return df

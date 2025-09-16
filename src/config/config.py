@@ -29,3 +29,5 @@ TERMS = {
     }
 
 ACCOMMODATIONS = ['time', 'attempts']
+
+NUM_WORKERS = 32
