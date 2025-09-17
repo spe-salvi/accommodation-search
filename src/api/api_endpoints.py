@@ -269,6 +269,9 @@ def endpoint_submissions(data, term_id=None, course_id=None, quiz_id=None, user_
 
     logger.info(f"Full submission cache: {len(submission_cache)} users")
 
+def endpoint_items(data, term_id=None, course_id=None, quiz_id=None, user_id=None):
+    return
+
 #######################################################
 
 ### Make quiz cache

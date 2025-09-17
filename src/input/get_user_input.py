@@ -44,7 +44,9 @@ def create_input_form():
     accom_type_var = tk.StringVar(value="both")
     ttk.Radiobutton(radio_frame, text="Time", variable=accom_type_var, value="time").grid(row=1, column=0, sticky=tk.W, pady=(0, 8))
     ttk.Radiobutton(radio_frame, text="Attempts", variable=accom_type_var, value="attempts").grid(row=2, column=0, sticky=tk.W, pady=(0, 8))
-    ttk.Radiobutton(radio_frame, text="Both", variable=accom_type_var, value="both").grid(row=3, column=0, sticky=tk.W)
+    ttk.Radiobutton(radio_frame, text="Split Test", variable=accom_type_var, value="split_test").grid(row=2, column=0, sticky=tk.W, pady=(0, 8))
+    ttk.Radiobutton(radio_frame, text="Spell Checker", variable=accom_type_var, value="spell_check").grid(row=2, column=0, sticky=tk.W, pady=(0, 8))
+    ttk.Radiobutton(radio_frame, text="All", variable=accom_type_var, value="all").grid(row=3, column=0, sticky=tk.W)
 
     ttk.Label(radio_frame, text="Quiz Type:").grid(row=0, column=1, sticky=tk.W, padx=(0, 20), pady=(0, 10))
     quiz_type_var = tk.StringVar(value="both")
@@ -72,11 +74,12 @@ def create_input_form():
             # date_filter = date_filter_var.get()
             term_id = '115'
             course_id = '10348'
-            quiz_id = '40122'
+            quiz_id = None#'40122'
             user_id = '5961'
-            accom_type = 'both'#'time'
+            accom_type = 'spell_check'#'time'
             quiz_type ='both'#'classic'
             date_filter = 'both'
+            #essay question: course_id: 12091; assignment_id: 179840
 
             term_id = None if not term_id else term_id
             course_id = None if not course_id else course_id
@@ -92,12 +95,15 @@ def create_input_form():
                 logger.info("Clearing all caches")
                 cache_manager.clear_all_caches()
             logger.info("Calling populate_cache")
-            populate_cache.call_populate(term_ids=cleaned_input[0], course_ids=cleaned_input[1],  quiz_ids=cleaned_input[2], user_ids=cleaned_input[3])
+            populate_cache.call_populate(term_ids=cleaned_input[0], course_ids=cleaned_input[1],
+                                         quiz_ids=cleaned_input[2], user_ids=cleaned_input[3],
+                                         accom_type=cleaned_input[4])
             logger.info("Building results DataFrame")
             logger.info(f'Len cleaned input: {len(cleaned_input)}')
             logger.info("Creating results DataFrame")
-            results_df = dataframe_utils.create_df(course_ids=cleaned_input[1], quiz_ids=cleaned_input[2], user_ids=cleaned_input[3],
-              accom_type=cleaned_input[4], quiz_type=cleaned_input[5], date_filter=cleaned_input[6])
+            results_df = dataframe_utils.create_df(course_ids=cleaned_input[1], quiz_ids=cleaned_input[2], 
+                                                   user_ids=cleaned_input[3], accom_type=cleaned_input[4],
+                                                   quiz_type=cleaned_input[5], date_filter=cleaned_input[6])
             root.destroy()
 
             logger.info("Generated results DataFrame")

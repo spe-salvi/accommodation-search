@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 all_course_ids, all_user_ids, all_quiz_ids = set(), set(), set()
 
-def call_populate(term_ids=None, course_ids=None, quiz_ids=None, user_ids=None):
+def call_populate(term_ids=None, course_ids=None, quiz_ids=None, user_ids=None, accom_type=None):
     logger.info("Starting cache population process")
     
     populate_term_cache(term_ids)
@@ -29,6 +29,9 @@ def call_populate(term_ids=None, course_ids=None, quiz_ids=None, user_ids=None):
     populate_user_cache(term_ids, course_ids, user_ids)
     populate_quiz_cache(course_ids, quiz_ids)
     populate_submissions_cache(course_ids, quiz_ids)
+
+    if accom_type == 'spell_check' or accom_type == 'all':
+        populate_question_cache(course_ids, quiz_ids)
 
 def populate_term_cache(term_ids, course_ids=None):
     logger.info("Populating term cache")
@@ -183,6 +186,8 @@ def populate_submissions_cache(course_ids, quiz_ids):
 
     logger.info("Finished populating submissions cache")
 
+def populate_question_cache(course_ids, quiz_ids):
+    return
 
 def get_courses_from_terms(term_ids):
     """

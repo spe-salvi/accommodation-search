@@ -102,35 +102,6 @@ def fetch_quiz_df():
     df["Course ID Quiz"] = df["Course ID Quiz"].astype("string").str.strip()
     return df
 
-# submission_cache = {user_id: {course_id: {quiz_id: {'extra_time': extra_time, 'extra_attempts': extra_attempts, 'date': date}, ...}, ...}, ...}
-# def fetch_submission_df():
-#     logger.info("Fetching submission cache (fetch_submission_df).")
-#     submission_cache = api_endpoints.submission_cache
-#     logger.info(f"Loaded submission cache with {len(submission_cache)} users.")
-#     # logger.info(f"Submission cache: {submission_cache}")
-
-#     rows = []
-#     for user_id, courses in submission_cache:
-#         logger.debug(f"Processing submissions for User ID: {user_id} ||| Courses: {list(courses)}")
-#         for course_id, quizzes in courses:
-#             logger.debug(f" Processing Course ID: {course_id} ||| Quizzes: {list(quizzes)}")
-#             for quiz_id, data in quizzes:
-#                 logger.debug(f"  Processing Quiz ID: {quiz_id} ||| Data: {data}")
-#                 rows.append({
-#                     "User ID Sub": user_id,
-#                     "Course ID Sub": course_id,
-#                     "Quiz ID Sub": quiz_id,
-#                     "Extra Time": data.get("extra_time", 0),
-#                     "Extra Attempts": data.get("extra_attempts", 0),
-#                     "Date": data.get("date", "")
-#                 })
-
-#     df = pd.DataFrame(rows)
-#     # normalize keys
-#     for c in ["User ID Sub", "Course ID Sub", "Quiz ID Sub"]:
-#         df[c] = df[c].astype("string").str.strip()
-#     return df
-
 def fetch_submission_df():
     logger.info("Fetching submission cache (fetch_submission_df).")
     submission_cache = api_endpoints.submission_cache or {}
@@ -168,3 +139,28 @@ def fetch_submission_df():
     df["User ID Sub"]   = df["User ID Sub"].astype(str)
     # logger.info(f'Final submission df before normalization:\n{df}')
     return df
+
+def fetch_quiz_title(course_id, quiz_id):
+    """
+    Returns the title of a quiz given course_id and quiz_id.
+    Uses cached quiz DataFrame.
+    """
+    quiz_df = fetch_quiz_df()
+    row = quiz_df[
+        (quiz_df['Course ID Quiz'] == str(course_id)) & 
+        (quiz_df['Quiz ID'] == str(quiz_id))
+    ]
+    if not row.empty:
+        return row.iloc[0]['Title']
+    return None
+
+def fetch_user_sortable_name(user_id):
+    """
+    Returns the sortable name of a user given user_id.
+    Uses cached user DataFrame.
+    """
+    user_df = fetch_user_df()
+    row = user_df[user_df['User ID'] == str(user_id)]
+    if not row.empty:
+        return row.iloc[0]['Sortable Name']
+    return None
