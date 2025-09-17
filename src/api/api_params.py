@@ -57,7 +57,7 @@ def get_data(search_type, term_id=None, course_id=None, quiz_id=None, user_id=No
         logger.error(f"[get_data] Error in function {function.__name__}: {str(e)}")
         return
 
-def get_urls(term_id=None, course_id=None, quiz_id=None, user_id=None, assignment_id=None):
+def get_urls(term_id=None, course_id=None, quiz_id=None, user_id=None):
 
     url_dict = {
         'term' : [f'{config.API_URL}/v1{config.FUS_ACCOUNT}/terms/{term_id}', {}],
@@ -71,7 +71,7 @@ def get_urls(term_id=None, course_id=None, quiz_id=None, user_id=None, assignmen
         'n_quizzes' : [f'{config.API_URL}/quiz/v1/courses/{course_id}/quizzes', {}],
         'n_quiz' : [f'{config.API_URL}/quiz/v1/courses/{course_id}/quizzes/{quiz_id}', {}],
         'n_quiz_submissions': [f'{config.API_URL}/v1/courses/{course_id}/assignments/{quiz_id}/submissions', {}],
-        'n_quiz_items': [f'{config.API_URL}/quiz/v1/courses/{course_id}/quizzes/{assignment_id}/items', {}],
+        'n_quiz_items': [f'{config.API_URL}/quiz/v1/courses/{course_id}/quizzes/{quiz_id}/items', {}],
         'enrollments' : [f'{config.API_URL}/v1/users/{user_id}/enrollments', {"enrollment_term_id": term_id} if term_id else {}],        
     }
 

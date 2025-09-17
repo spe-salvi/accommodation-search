@@ -29,6 +29,7 @@ def call_populate(term_ids=None, course_ids=None, quiz_ids=None, user_ids=None, 
     populate_user_cache(term_ids, course_ids, user_ids)
     populate_quiz_cache(course_ids, quiz_ids)
     populate_submissions_cache(course_ids, quiz_ids)
+    populate_question_cache(course_ids, quiz_ids)
 
     if accom_type == 'spell_check' or accom_type == 'all':
         populate_question_cache(course_ids, quiz_ids)
@@ -143,14 +144,23 @@ def populate_quiz_cache(course_ids, quiz_ids):
     course_ids = course_ids if course_ids else list(all_course_ids)
     quiz_ids = quiz_ids if quiz_ids else list(all_quiz_ids)
 
+    def process_quiz(cid, qid):
+        try:
+            logger.info(f"Processing course/quiz {cid} | {qid}")
+            # Each call handles its own locking inside endpoint
+            get_data('c_quiz', course_id=cid, quiz_id=qid)
+            get_data('n_quiz', course_id=cid, quiz_id=qid)
+            logger.info(f"Finished processing course/quiz {cid} | {qid}")
+        except Exception as e:
+            logger.error(f"Error processing course/quiz {cid} | {qid}: {e}")
+            raise
+
     # Threaded fetching of quizzes (both classic and new)
     with ThreadPoolExecutor(max_workers=config.NUM_WORKERS) as executor:
-        futures = []
-        for course_id in course_ids:
-            for quiz_id in quiz_ids:
-                futures.append(executor.submit(get_data, 'c_quiz', course_id=course_id, quiz_id=quiz_id))
-                futures.append(executor.submit(get_data, 'n_quiz', course_id=course_id, quiz_id=quiz_id))
-
+        futures = [
+            executor.submit(process_quiz, course_id=cid, quiz_id=qid)
+            for cid in course_ids for qid in quiz_ids
+        ]
         for f in as_completed(futures):
             _ = f.result()
 
@@ -171,23 +181,53 @@ def populate_submissions_cache(course_ids, quiz_ids):
     course_ids = course_ids if course_ids else list(all_course_ids)
     quiz_ids = quiz_ids if quiz_ids else list(all_quiz_ids)
 
-    with ThreadPoolExecutor(max_workers=config.NUM_WORKERS) as executor:
-        futures = []
-        for course_id in course_ids:
-            for quiz_id in quiz_ids:
-                futures.append(executor.submit(get_data, 'c_quiz_submissions', course_id=course_id, quiz_id=quiz_id))
-                futures.append(executor.submit(get_data, 'n_quiz_submissions', course_id=course_id, quiz_id=quiz_id))
+    def process_submission(cid, qid):
+        try:
+            logger.info(f"Processing course/quiz {cid} | {qid}")
+            # Each call handles its own locking inside endpoint
+            get_data('c_quiz_submissions', course_id=cid, quiz_id=qid)
+            get_data('c_quiz_submissions', course_id=cid, quiz_id=qid)
+            logger.info(f"Finished processing course/quiz {cid} | {qid}")
+        except Exception as e:
+            logger.error(f"Error processing course/quiz {cid} | {qid}: {e}")
+            raise
 
+    with ThreadPoolExecutor(max_workers=config.NUM_WORKERS) as executor:
+        futures = [
+            executor.submit(process_submission, course_id=cid, quiz_id=qid)
+            for cid in course_ids for qid in quiz_ids
+        ]
         for f in as_completed(futures):
-            try:
-                f.result()
-            except Exception as e:
-                logger.error(f"Error populating submissions cache: {e}")
+            _ = f.result()
 
     logger.info("Finished populating submissions cache")
 
 def populate_question_cache(course_ids, quiz_ids):
-    return
+    global all_course_ids, all_quiz_ids
+    logger.info("Populating question cache")
+    logger.info(f'Initial all_course_ids: {all_course_ids}')
+    logger.info(f'Initial all_quiz_ids: {all_quiz_ids}')
+
+    course_ids = course_ids if course_ids else list(all_course_ids)
+    quiz_ids = quiz_ids if quiz_ids else list(all_quiz_ids)
+
+    def process_question(cid, qid):
+        try:
+            logger.info(f"Processing course/quiz {cid} | {qid}")
+            # Each call handles its own locking inside endpoint
+            get_data('n_quiz_items', course_id=cid, quiz_id=qid)
+            logger.info(f"Finished processing course/quiz {cid} | {qid}")
+        except Exception as e:
+            logger.error(f"Error processing course/quiz {cid} | {qid}: {e}")
+            raise
+
+    with ThreadPoolExecutor(max_workers=config.NUM_WORKERS) as executor:
+        futures = [
+            executor.submit(process_question, course_id=cid, quiz_id=qid)
+            for cid in course_ids for qid in quiz_ids
+        ]
+        for f in as_completed(futures):
+            _ = f.result()
 
 def get_courses_from_terms(term_ids):
     """

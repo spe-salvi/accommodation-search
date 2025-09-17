@@ -269,7 +269,25 @@ def endpoint_submissions(data, term_id=None, course_id=None, quiz_id=None, user_
 
     logger.info(f"Full submission cache: {len(submission_cache)} users")
 
+# TODO: Finish this method
+# Define endpoints, construct cache
 def endpoint_items(data, term_id=None, course_id=None, quiz_id=None, user_id=None):
+    logger.info("endpoint_items called")
+
+    if not data or not (course_id and quiz_id):
+        logging.error("endpoint_items: Invalid input provided; skipping cache updates.")
+        return
+
+    cid = str(course_id)
+    qid = str(quiz_id)
+
+    with cache_lock:
+        question_cache = cache_manager.load_question_cache()
+
+
+        cache_manager.save_question_cache()
+
+    logger.info(f"Question cache after item endpoint: {len(question_cache)} questions")
     return
 
 #######################################################
