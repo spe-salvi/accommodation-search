@@ -68,8 +68,40 @@ _Automate the process of managing quiz accommodations (extra time or attempts) i
 - Decided to simplify cache structure for maintainability and readability while debugging integration
 - (7/1) Restructured cache and created transient vs persistent caches (edited api_endpoints.py)
 - Clarified cache loading/writing when partial input is entered (resolvers.py)
-- 
+- (8/28) Debugged dataframe merges and column names
 
+- Decided to implement control flow initially without cache lookups (still writing to caches though)
+- Implemented multithreading for api calls (populate_cache sub routines)
+  - Placed locks at the endpoint functions so api calls still run in parallel, but writing happens sequentially
+- Implemented split_test accommodation search
+  - Compared user's last name to quiz titles
+  - Added the filter to the final dataframe
+  - Waiting for gui update
+
+- Made design decisions for spelling_check accommodation search
+  - Spell check is only possible for new quizzes
+  - The url to fetch names the assignment_id as required
+    - This is the same as the quiz_id for new quizzes
+    - It does not apply here, but worth noting: The two ids are not the same for classic quizzes
+  - Made an endpoint function to check each question in a given quiz
+    - The function searches the question type to filter essay questions (the only type of question that allows spell check)
+    - Then, the function checks the spell_check flag
+  - This data is added to a question cache
+    - The cache persists between calls
+    - Course id, quiz id, question id can be used in later calls to quickly check the spell check flag
+    - No need to look up every question to find essays
+
+Detailed task flow for spell check accommodation search:
+  - Add option to GUI
+  - Add condition for 'spell_check' and 'all' selections: to populate_cache, to create_df
+  - Establish cache structure/persistence
+  - Review the control flow of api_params with the new endpoint
+  - endpoint_items to cache
+    - Only add if essay type
+    - Check spell_check flag
+  - Create question df in fetch
+  - Integrate question df with final conditionally
+  - Implement multithreading
 ---
 
 ## 6. Usage Instructions
