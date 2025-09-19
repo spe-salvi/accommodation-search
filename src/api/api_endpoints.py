@@ -206,10 +206,6 @@ def endpoint_quiz(data, term_id=None, course_id=None, quiz_id=None, user_id=None
     if not data or not course_id or not quiz_id or term_id or user_id:
         logger.error("endpoint_quiz: Invalid input provided; skipping quiz cache update.")
         return
-    
-    if 'title' not in data or 'time_limit' not in data:
-        logger.error(f"endpoint_quiz: Missing 'title' or 'time_limit' in provided data: {data}")
-        return
 
     with cache_lock:  # prevent race conditions if multiple threads hit the same quiz
         quiz_cache.setdefault(quiz_id, {}).update({
@@ -246,10 +242,6 @@ def endpoint_submissions(data, term_id=None, course_id=None, quiz_id=None, user_
                 logger.error(f"endpoint_submissions: Missing 'user_id' in provided data: {submission}")
                 continue
 
-            if not all(key in submission for key in ['extra_time', 'extra_attempts', 'workflow_state']):
-                logger.error(f"endpoint_submissions: Missing data in provided data: {submission}")
-                continue
-
             user_dict = submission_cache.setdefault(str(uid), {})
             course_dict = user_dict.setdefault(course_id, {})
 
@@ -260,7 +252,7 @@ def endpoint_submissions(data, term_id=None, course_id=None, quiz_id=None, user_
                 'extra_attempts': submission.get('extra_attempts', 0),
                 'date': (
                     'past' if workflow in ['complete', 'graded']
-                    else 'future' if workflow == 'settings_only'
+                    else 'future' if workflow in ['settings_only', 'unsubmitted']
                     else ''
                 )
             }
@@ -271,6 +263,7 @@ def endpoint_submissions(data, term_id=None, course_id=None, quiz_id=None, user_
 
 # TODO: Finish this method
 # Define endpoints, construct cache
+# question_cache: {course_id: {quiz_id: {item_id: {'question_type':question_type, 'spell_check':(boolean)}}}}
 def endpoint_items(data, term_id=None, course_id=None, quiz_id=None, user_id=None):
     logger.info("endpoint_items called")
 
@@ -284,10 +277,35 @@ def endpoint_items(data, term_id=None, course_id=None, quiz_id=None, user_id=Non
     with cache_lock:
         question_cache = cache_manager.load_question_cache()
 
+        for item in data:
+            try:
+                item_id = str(item.get("id"))
+                entry = item.get("entry", {})
+                q_type = entry.get("interaction_type_slug", "unknown")
+                if q_type != "essay":
+                    continue
+                # Prefer spell_check from interaction_data (more reliable than entry.properties)
+                spell_check = entry.get("interaction_data", {}).get("spell_check")
+
+                # Insert into nested structure
+                question_cache.setdefault(cid, {}).setdefault(qid, {})[item_id] = {
+                    "question_type": q_type,
+                    "spell_check": bool(spell_check),
+                }
+
+                logger.info(
+                    f"Cached Q: C:{cid}, Q:{qid}, Item:{item_id}, "
+                    f"Type:{q_type}, SpellCheck:{spell_check}"
+                )
+            except Exception as e:
+                logger.error(f"Error processing item {item}: {e}")
 
         cache_manager.save_question_cache()
 
-    logger.info(f"Question cache after item endpoint: {len(question_cache)} questions")
+    logger.info(
+        f"Question cache after item endpoint: "
+        f"{sum(len(q) for q in question_cache.get(cid, {}).values())} questions"
+    )
     return
 
 #######################################################

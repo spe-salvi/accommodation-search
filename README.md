@@ -102,6 +102,21 @@ Detailed task flow for spell check accommodation search:
   - Create question df in fetch
   - Integrate question df with final conditionally
   - Implement multithreading
+
+Debugged spell check:
+  - Extra time for new quizzes (endpoint?) - ti fix later, no endpoint exists
+  - Fixed control flow, merging, and filters
+
+Added handling of string input:
+- GUI fields update
+- Process data: to lowercase, fuzzy
+- Term search using dict
+- Course search with SIS ID, name, course code
+- Student search with SIS ID, login ID, name
+- Quiz search with name
+- Fetch endpoints (order of operations) for each
+- Handle multiple user/quiz/course results
+
 ---
 
 ## 6. Usage Instructions

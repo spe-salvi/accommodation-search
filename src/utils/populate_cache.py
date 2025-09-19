@@ -138,16 +138,26 @@ def populate_user_cache(term_ids, course_ids, user_ids):
 def populate_quiz_cache(course_ids, quiz_ids):
     global all_course_ids, all_quiz_ids
     logger.info("Populating quiz cache")
-    logger.info(f"Initial all_course_ids: {all_course_ids}")
-    logger.info(f"Initial all_quiz_ids: {all_quiz_ids}")
 
     course_ids = course_ids if course_ids else list(all_course_ids)
     quiz_ids = quiz_ids if quiz_ids else list(all_quiz_ids)
 
+    # Filter quiz_ids by course
+    filtered_quiz_ids = set()
+    course_cache = cache_manager.load_course_cache()
+    for cid in course_ids:
+        course_quizzes = set(course_cache.get(cid, {}).get("quizzes", []))
+        for qid in quiz_ids:
+            if qid in course_quizzes:
+                filtered_quiz_ids.add((cid, qid))
+
+    if not filtered_quiz_ids:
+        logger.warning("No valid course/quiz pairs found to populate.")
+        return
+
     def process_quiz(cid, qid):
         try:
             logger.info(f"Processing course/quiz {cid} | {qid}")
-            # Each call handles its own locking inside endpoint
             get_data('c_quiz', course_id=cid, quiz_id=qid)
             get_data('n_quiz', course_id=cid, quiz_id=qid)
             logger.info(f"Finished processing course/quiz {cid} | {qid}")
@@ -155,21 +165,17 @@ def populate_quiz_cache(course_ids, quiz_ids):
             logger.error(f"Error processing course/quiz {cid} | {qid}: {e}")
             raise
 
-    # Threaded fetching of quizzes (both classic and new)
     with ThreadPoolExecutor(max_workers=config.NUM_WORKERS) as executor:
-        futures = [
-            executor.submit(process_quiz, course_id=cid, quiz_id=qid)
-            for cid in course_ids for qid in quiz_ids
-        ]
+        futures = [executor.submit(process_quiz, cid, qid) for cid, qid in filtered_quiz_ids]
         for f in as_completed(futures):
             _ = f.result()
 
     quiz_cache = api_endpoints.quiz_cache
-    for qid in quiz_ids:
+    for _, qid in filtered_quiz_ids:
         if qid not in quiz_cache:
             logger.warning(f"Quiz ID {qid} not found in quiz cache after population.")
-        for course_id in quiz_cache.get(qid, {}).get("courses", []):
-            all_course_ids.add(course_id)
+        else:
+            all_course_ids.add(quiz_cache[qid].get("course_id"))
     #search_urls
 
 def populate_submissions_cache(course_ids, quiz_ids):
@@ -186,7 +192,7 @@ def populate_submissions_cache(course_ids, quiz_ids):
             logger.info(f"Processing course/quiz {cid} | {qid}")
             # Each call handles its own locking inside endpoint
             get_data('c_quiz_submissions', course_id=cid, quiz_id=qid)
-            get_data('c_quiz_submissions', course_id=cid, quiz_id=qid)
+            get_data('n_quiz_submissions', course_id=cid, quiz_id=qid)
             logger.info(f"Finished processing course/quiz {cid} | {qid}")
         except Exception as e:
             logger.error(f"Error processing course/quiz {cid} | {qid}: {e}")
@@ -194,7 +200,7 @@ def populate_submissions_cache(course_ids, quiz_ids):
 
     with ThreadPoolExecutor(max_workers=config.NUM_WORKERS) as executor:
         futures = [
-            executor.submit(process_submission, course_id=cid, quiz_id=qid)
+            executor.submit(process_submission, cid, qid)
             for cid in course_ids for qid in quiz_ids
         ]
         for f in as_completed(futures):
@@ -223,7 +229,7 @@ def populate_question_cache(course_ids, quiz_ids):
 
     with ThreadPoolExecutor(max_workers=config.NUM_WORKERS) as executor:
         futures = [
-            executor.submit(process_question, course_id=cid, quiz_id=qid)
+            executor.submit(process_question, cid, qid)
             for cid in course_ids for qid in quiz_ids
         ]
         for f in as_completed(futures):

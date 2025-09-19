@@ -74,9 +74,9 @@ def create_input_form():
             # date_filter = date_filter_var.get()
             term_id = '115'
             course_id = '10348'
-            quiz_id = None#'40122'
+            quiz_id = '40122'
             user_id = '5961'
-            accom_type = 'spell_check'#'time'
+            accom_type = 'time'
             quiz_type ='both'#'classic'
             date_filter = 'both'
             #essay question: course_id: 12091; assignment_id: 179840
@@ -159,3 +159,175 @@ def process_input(input_data):
         date_filter = input_data[6]
     else: date_filter = None
     return (terms, course_ids, quiz_ids, user_ids, accom_type, quiz_type, date_filter)
+
+
+
+
+
+##########################################################################################
+
+
+def create_input_form_2():
+    root = tk.Tk()
+    root.title("Accommodations Search (Names & SIS IDs)")
+    # You can tweak this if you want a larger default window; leaving modest default:
+    root.geometry("800x600")  # adjust so everything fits without a scrollbar
+    root.resizable(False, False)
+
+
+    style = ttkb.Style()
+    style.theme_use('pulse')
+
+    # ---- layout: top = scrollable form, bottom = fixed button bar ----
+    root.rowconfigure(0, weight=1)
+    root.columnconfigure(0, weight=1)
+
+    main_frame = ttk.Frame(root)
+    main_frame.grid(row=0, column=0, sticky="nsew")
+
+    # Canvas + vertical scrollbar for the form
+    canvas = tk.Canvas(main_frame, highlightthickness=0)
+    vsb = ttk.Scrollbar(main_frame, orient="vertical", command=canvas.yview)
+    canvas.configure(yscrollcommand=vsb.set)
+
+    canvas.grid(row=0, column=0, sticky="nsew")
+    vsb.grid(row=0, column=1, sticky="ns")
+    main_frame.rowconfigure(0, weight=1)
+    main_frame.columnconfigure(0, weight=1)
+
+    # Inner frame that will hold the actual widgets
+    inner = ttk.Frame(canvas, padding=16)
+    frame_id = canvas.create_window((0, 0), window=inner, anchor="nw")
+
+    # Make the inner frame width follow the canvas width
+    def _on_inner_config(event):
+        canvas.configure(scrollregion=canvas.bbox("all"))
+    inner.bind("<Configure>", _on_inner_config)
+
+    def _on_canvas_config(event):
+        canvas.itemconfig(frame_id, width=event.width)
+    canvas.bind("<Configure>", _on_canvas_config)
+
+    # Helper: placeholder support (works for ttk.Entry; color calls wrapped)
+    def add_placeholder(entry, placeholder):
+        entry.delete(0, tk.END)
+        entry.insert(0, placeholder)
+        try:
+            entry.config(foreground="gray")
+        except Exception:
+            pass
+
+        def on_focus_in(e):
+            if entry.get() == placeholder:
+                entry.delete(0, tk.END)
+                try:
+                    entry.config(foreground="black")
+                except Exception:
+                    pass
+
+        def on_focus_out(e):
+            if entry.get().strip() == "":
+                entry.insert(0, placeholder)
+                try:
+                    entry.config(foreground="gray")
+                except Exception:
+                    pass
+
+        entry.bind("<FocusIn>", on_focus_in)
+        entry.bind("<FocusOut>", on_focus_out)
+
+    # ---- fields ----
+    field_info = [
+        ("Term Name", "Fall 2025"),
+        ("Course Name", "Philosophy of the Human Person"),
+        ("Course SIS ID", "202510-PHL-113-A"),
+        ("Course Code", "PHL-113-A"),
+        ("Student Name", "John Smith"),
+        ("Student SIS ID", "2109876"),
+        ("Student Login ID", "jsmith"),
+        ("Quiz Name", "Final Exam"),
+    ]
+
+    entry_vars = {}
+    for i, (label_key, placeholder) in enumerate(field_info):
+        ttk.Label(inner, text=f"{label_key}:").grid(row=i, column=0, sticky="w", pady=(6, 8), padx=(2,8))
+        var = tk.StringVar()
+        entry = ttk.Entry(inner, textvariable=var)
+        entry.grid(row=i, column=1, sticky="ew", pady=(6, 8))
+        add_placeholder(entry, placeholder)
+        entry_vars[label_key] = (var, placeholder)
+
+    inner.columnconfigure(1, weight=1)
+
+    # ---- radio groups ----
+    radio_frame = ttk.Frame(inner)
+    radio_frame.grid(row=len(field_info), column=0, columnspan=2, sticky="ew", pady=(10, 6))
+
+    # Accommodation Type
+    ttk.Label(radio_frame, text="Accommodation Type:").grid(row=0, column=0, sticky="w", padx=(0, 12))
+    accom_type_var = tk.StringVar(value="both")
+    ttk.Radiobutton(radio_frame, text="Time", variable=accom_type_var, value="time").grid(row=1, column=0, sticky="w", pady=3)
+    ttk.Radiobutton(radio_frame, text="Attempts", variable=accom_type_var, value="attempts").grid(row=2, column=0, sticky="w", pady=3)
+    ttk.Radiobutton(radio_frame, text="Split Test", variable=accom_type_var, value="split_test").grid(row=3, column=0, sticky="w", pady=3)
+    ttk.Radiobutton(radio_frame, text="Spell Checker", variable=accom_type_var, value="spell_check").grid(row=4, column=0, sticky="w", pady=3)
+    ttk.Radiobutton(radio_frame, text="All", variable=accom_type_var, value="all").grid(row=5, column=0, sticky="w", pady=3)
+
+    # Quiz Type
+    ttk.Label(radio_frame, text="Quiz Type:").grid(row=0, column=1, sticky="w", padx=(12, 12))
+    quiz_type_var = tk.StringVar(value="both")
+    ttk.Radiobutton(radio_frame, text="Classic", variable=quiz_type_var, value="classic").grid(row=1, column=1, sticky="w", pady=3)
+    ttk.Radiobutton(radio_frame, text="New", variable=quiz_type_var, value="new").grid(row=2, column=1, sticky="w", pady=3)
+    ttk.Radiobutton(radio_frame, text="Both", variable=quiz_type_var, value="both").grid(row=3, column=1, sticky="w", pady=3)
+
+    # Date Filter
+    ttk.Label(radio_frame, text="Date Filter:").grid(row=0, column=2, sticky="w", padx=(12, 0))
+    date_filter_var = tk.StringVar(value="both")
+    ttk.Radiobutton(radio_frame, text="Future", variable=date_filter_var, value="future").grid(row=1, column=2, sticky="w", pady=3)
+    ttk.Radiobutton(radio_frame, text="Past", variable=date_filter_var, value="past").grid(row=2, column=2, sticky="w", pady=3)
+    ttk.Radiobutton(radio_frame, text="Both", variable=date_filter_var, value="both").grid(row=3, column=2, sticky="w", pady=3)
+
+    for c in range(3):
+        radio_frame.columnconfigure(c, weight=1)
+
+    # Clear cache checkbox (inside scrollable area)
+    clear_cache_var = tk.BooleanVar(value=False)
+    ttk.Checkbutton(inner, text="Clear all caches", variable=clear_cache_var).grid(
+        row=len(field_info) + 1, column=0, columnspan=2, sticky="w", pady=(10, 4)
+    )
+
+    # ---- bottom fixed bar with button (always visible) ----
+    bottom_bar = ttk.Frame(root, padding=10)
+    bottom_bar.grid(row=1, column=0, sticky="ew")
+    bottom_bar.columnconfigure(0, weight=1)
+
+    def generate_report():
+        try:
+            # Collect values (treat placeholder as empty)
+            values = {}
+            for k, (var, ph) in entry_vars.items():
+                v = var.get().strip()
+                values[k] = None if v == "" or v == ph else v
+
+            payload = {
+                "fields": values,
+                "accom_type": accom_type_var.get(),
+                "quiz_type": quiz_type_var.get(),
+                "date_filter": date_filter_var.get(),
+                "clear_cache": clear_cache_var.get()
+            }
+            logger.info("Collected payload: %s", payload)
+
+            # TODO: resolve names -> IDs and call populate_cache / create_df as needed
+            # Example:
+            # resolved_ids = resolve_names_to_ids(payload["fields"])
+            # populate_cache.call_populate(term_ids=resolved_ids["term_id"], ...)
+
+            # Close window after generating
+            root.destroy()
+        except Exception as e:
+            logger.exception("Error in generate_report: %s", e)
+
+    generate_btn = ttk.Button(bottom_bar, text="Generate Report", command=generate_report)
+    generate_btn.grid(row=0, column=0, sticky="ew", padx=(120,120))  # centered-ish; adjust as desired
+
+    root.mainloop()

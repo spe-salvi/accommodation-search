@@ -5,7 +5,8 @@ from config.config import *
 def main():
     start = time.perf_counter()
     
-    get_user_input.create_input_form()
+    # get_user_input.create_input_form()
+    get_user_input.create_input_form_2()
 
     end = time.perf_counter()
     seconds = end - start

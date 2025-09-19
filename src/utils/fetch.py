@@ -57,6 +57,7 @@ def fetch_course_df():
 def fetch_user_df():
     logger.info("Fetching user cache (fetch_user_df).")
     user_cache = cache_manager.load_user_cache()
+    logger.info(f'Loaded {len(user_cache)} users from cache.')
 
     data = {
         user_id: [
@@ -82,6 +83,8 @@ def fetch_user_df():
 def fetch_quiz_df():
     logger.info("Fetching quiz cache (fetch_quiz_df).")
     quiz_cache = api_endpoints.quiz_cache
+    logger.info(f'Loaded {len(quiz_cache)} quizzes from cache.')
+    
     data = {
         quiz_id: [
             quiz.get("title", ""),
@@ -133,11 +136,51 @@ def fetch_submission_df():
                     "Date": data.get("date", "")
                 })
 
-    df = pd.DataFrame(rows)
-    df["Course ID Sub"] = df["Course ID Sub"].astype(str)
-    df["Quiz ID Sub"]   = df["Quiz ID Sub"].astype(str)
-    df["User ID Sub"]   = df["User ID Sub"].astype(str)
+    df = pd.DataFrame(rows, columns=[
+        "User ID Sub", "Course ID Sub", "Quiz ID Sub",
+        "Extra Time", "Extra Attempts", "Date"
+    ])
+
+    if not df.empty:
+        df["Course ID Sub"] = df["Course ID Sub"].astype(str)
+        df["Quiz ID Sub"]   = df["Quiz ID Sub"].astype(str)
+        df["User ID Sub"]   = df["User ID Sub"].astype(str)
     # logger.info(f'Final submission df before normalization:\n{df}')
+    return df
+
+def fetch_question_df():
+    logger.info("Fetching question cache (fetch_question_df).")
+    question_cache = cache_manager.load_question_cache()
+
+    rows = []
+    for course_id, quizzes in question_cache.items():
+        if not isinstance(quizzes, dict):
+            logger.warning(f"Course {course_id} has non-dict quizzes: {quizzes}")
+            continue
+
+        for quiz_id, items in quizzes.items():
+            if not isinstance(items, dict):
+                logger.warning(f" Quiz {quiz_id} has non-dict items: {items}")
+                continue
+
+            for item_id, data in items.items():
+                if not isinstance(data, dict):
+                    logger.warning(f"  Item {item_id} has non-dict data: {data}")
+                    continue
+
+                rows.append({
+                    "Course ID Ques": course_id,
+                    "Quiz ID Ques": quiz_id,
+                    "Item ID Ques": item_id,
+                    "Spell Check": data.get("spell_check", False)
+                })
+
+    df = pd.DataFrame(rows)
+    df["Course ID Ques"] = df["Course ID Ques"].astype(str)
+    df["Quiz ID Ques"]   = df["Quiz ID Ques"].astype(str)
+    df["Item ID Ques"]   = df["Item ID Ques"].astype(str)
+    df["Spell Check"]    = df["Spell Check"].astype(str)
+    # logger.info(f'Final question df before normalization:\n{df}')
     return df
 
 def fetch_quiz_title(course_id, quiz_id):
