@@ -108,10 +108,10 @@ Debugged spell check:
   - Fixed control flow, merging, and filters
 
 Added handling of string input:
-- GUI fields update
-- Process data: to lowercase, fuzzy
-- Term search using dict
-- Course search with SIS ID, name, course code
+- GUI fields update                             x
+- Process data: to lowercase, fuzzy             x
+- Term search using dict                        x
+- Course search with SIS ID, name, course code  
 - Student search with SIS ID, login ID, name
 - Quiz search with name
 - Fetch endpoints (order of operations) for each

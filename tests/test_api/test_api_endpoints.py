@@ -1,26 +1,26 @@
-import pytest
-from unittest.mock import patch
-import api.api_endpoints as endpoints
-from api.api_endpoints import endpoint_submissions, submission_cache
-import logging
+# import pytest
+# from unittest.mock import patch
+# import api.api_endpoints as endpoints
+# from api.api_endpoints import endpoint_submissions, submission_cache
+# import logging
 
-@pytest.fixture(autouse=True)
-def reset_term_cache():
-    endpoints.term_cache = {}
+# @pytest.fixture(autouse=True)
+# def reset_term_cache():
+#     endpoints.term_cache = {}
 
-@pytest.fixture
-def mock_save_term_cache():
-    with patch("utils.cache_manager.save_term_cache") as mock:
-        yield mock
+# @pytest.fixture
+# def mock_save_term_cache():
+#     with patch("utils.cache_manager.save_term_cache") as mock:
+#         yield mock
 
-@pytest.fixture
-def reset_quiz_cache():
-    """Fixture to reset the quiz_cache before each test."""
-    endpoints.quiz_cache = {}
+# @pytest.fixture
+# def reset_quiz_cache():
+#     """Fixture to reset the quiz_cache before each test."""
+#     endpoints.quiz_cache = {}
 
-@pytest.fixture
-def reset_submission_cache():
-    endpoints.submission_cache = {}
+# @pytest.fixture
+# def reset_submission_cache():
+#     endpoints.submission_cache = {}
 
 ##################################### Endpoint for Terms ########################################
 

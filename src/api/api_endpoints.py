@@ -37,6 +37,8 @@ def endpoint_courses(data, term_id=None, course_id=None, quiz_id=None, user_id=N
     if (not data) or course_id or quiz_id or user_id:
         return None
 
+    ret_ids = []
+
     with cache_lock:
         term_cache = cache_manager.load_term_cache()
         for course in data:
@@ -44,6 +46,7 @@ def endpoint_courses(data, term_id=None, course_id=None, quiz_id=None, user_id=N
                 logging.error(f"endpoint_courses: Missing 'id' or 'enrollment_term_id' in provided data: {course}")
                 continue
             course_id = str(course.get('id'))
+            ret_ids.append(course_id)
             enrollment_term_id = str(course.get('enrollment_term_id'))
 
             if term_id in term_cache:
@@ -61,6 +64,8 @@ def endpoint_courses(data, term_id=None, course_id=None, quiz_id=None, user_id=N
 
         cache_manager.save_term_cache()
     logger.info(f"Term cache after courses endpoint: {len(term_cache)} terms")
+    return ret_ids
+
 
 ### Add quizzes to course cache
 # course_cache = {course_id: { 'code': course_code, 'name': course_name, 'term': term_id, 'users': [user_id, user_id, user_id], 'quizzes': [quiz_id, quiz_id, quiz_id]}, ...}
@@ -72,6 +77,7 @@ def endpoint_quizzes(data, term_id=None, course_id=None, quiz_id=None, user_id=N
         return
 
     cid = str(course_id)
+    quiz_ids = []
 
     with cache_lock:
         course_cache = cache_manager.load_course_cache()
@@ -84,6 +90,7 @@ def endpoint_quizzes(data, term_id=None, course_id=None, quiz_id=None, user_id=N
                 logger.error(f"endpoint_quizzes: Missing 'id' in provided data: {quiz}")
                 continue
             qid = str(quiz.get('id'))
+            quiz_ids.append(qid)
             if qid not in c_cache["quizzes"]:
                 c_cache["quizzes"].append(qid)
 
@@ -91,6 +98,7 @@ def endpoint_quizzes(data, term_id=None, course_id=None, quiz_id=None, user_id=N
         cache_manager.save_course_cache()
 
     logger.info(f"Course cache after quizzes endpoint: {len(course_cache)} courses")
+    return quiz_ids
 
 
 ### Make user cache
@@ -160,6 +168,7 @@ def endpoint_course_users(data, term_id=None, course_id=None, quiz_id=None, user
         return
 
     cid = str(course_id)
+    user_ids = []
 
     with cache_lock:
         course_cache = cache_manager.load_course_cache()
@@ -170,6 +179,7 @@ def endpoint_course_users(data, term_id=None, course_id=None, quiz_id=None, user
                 logger.error(f"endpoint_course_users: Missing 'id' in provided data: {user}")
                 continue
             uid = str(user.get('id'))
+            user_ids.append(uid)
 
             # Update user cache
             u_cache = user_cache.setdefault(uid, {})
@@ -195,6 +205,7 @@ def endpoint_course_users(data, term_id=None, course_id=None, quiz_id=None, user
 
     logger.info(f"User cache after course_users endpoint: {len(user_cache)} users")
     logger.info(f"Course cache after course_users endpoint: {len(course_cache)} courses")
+    return list(set(user_ids))
 
 
 ### Make quiz cache
