@@ -58,23 +58,23 @@ def build_accommodation_df(course_ids, quiz_ids, user_ids, accom_type, quiz_type
                         ]
 
                     # Check split_test accommodations
-                    if 'split_test' in valid_accoms:
-                        # Fetch quiz title from your quiz_df (or however you have access to it)
-                        title = fetch.fetch_quiz_title(course_id, quiz_id)  # placeholder function
-                        sortable_name = fetch.fetch_user_sortable_name(user_id)  # placeholder
-                        last_name = sortable_name.split(",")[0].strip()
+                    title = fetch.fetch_quiz_title(course_id, quiz_id) or ""
+                    sortable_name = fetch.fetch_user_sortable_name(user_id) or ""
 
-                        if last_name and f"{last_name}" in title and "Part" in title:
-                            # Determine date for consistency (could be past/future logic)
-                            accom_date = "past"  # or fetch if available                                                    # TODO
-                            acc_df.loc[len(acc_df)] = [
-                                str(course_id),
-                                str(quiz_id),
-                                str(user_id),
-                                'split_test',
-                                accom_date,
-                                qt
-                            ]
+                    # Extract last name safely
+                    last_name = sortable_name.split(",")[0].strip() if sortable_name else ""
+
+                    # Only check if last_name exists
+                    if last_name and last_name in title and "Part" in title:
+                        accom_date = "past"  # or fetch if available
+                        acc_df.loc[len(acc_df)] = [
+                            str(course_id),
+                            str(quiz_id),
+                            str(user_id),
+                            'split_test',
+                            accom_date,
+                            qt
+                        ]
 
                     if 'spell_check' in valid_accoms:
                         accom_date = "past"  # or fetch if available                                                        # TODO
@@ -222,10 +222,19 @@ def mark_split_test_accommodations(df):
     Look for quizzes split into multiple parts (like Final Exam - John Doe Part 1/Part 2)
     and assign 'split_test' as the accommodation type.
     """
+    if df.empty:
+        return df
+
     df = df.copy()
     
     # Extract the student's last name from the Sortable Name column
-    df['Last Name'] = df['Sortable Name'].str.split(',').str[0].str.strip()
+    df['Last Name'] = (
+        df['Sortable Name']
+        .fillna('')  
+        .str.split(',')
+        .str[0]
+        .str.strip()
+    )
 
     # Identify rows where the quiz title contains the student's last name AND 'Part 1' or 'Part 2'
     split_mask = df.apply(
