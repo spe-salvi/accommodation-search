@@ -6,7 +6,7 @@ def main():
     start = time.perf_counter()
     
     # get_user_input.create_input_form()
-    get_user_input.create_input_form()
+    get_user_input.create_input_form_merged()
 
     end = time.perf_counter()
     seconds = end - start

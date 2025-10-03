@@ -13,18 +13,22 @@ all_course_ids, all_user_ids, all_quiz_ids = set(), set(), set()
 
 def call_populate(**kwargs):
     logger.info("Starting cache population process")
-    term_id = kwargs.get('input_data')[0]
-    course_search = kwargs.get('input_data')[1]
-    user_search = kwargs.get('input_data')[3]
-    quiz_search = kwargs.get('input_data')[2]
-    accom_type = kwargs.get('input_data')[4]
+    term_id = kwargs.get('term_ids') if kwargs.get('term_ids') else None
+    course_ids = kwargs.get('course_ids') if kwargs.get('course_ids') else None
+    user_ids = kwargs.get('user_ids') if kwargs.get('user_ids') else None
+    quiz_ids = kwargs.get('quiz_ids') if kwargs.get('quiz_ids') else None
+    accom_type = kwargs.get('accom_type') if kwargs.get('accom_type') else 'all'
     # date_filter = kwargs.get('input_data')[5]
     
+    logger.info('Populating term cache')
     populate_term_cache(term_id)
 
-    user_ids = get_user_ids(user_search)
-    course_ids = get_course_ids(term_id, user_ids, course_search)
-    quiz_ids = get_quiz_ids(course_ids, quiz_search)
+    # logger.info('Getting user ids')
+    # user_ids = get_user_ids(user_search)
+    # logger.info('Getting course ids')
+    # course_ids = get_course_ids(term_id, user_ids, course_search)
+    # logger.info('Getting quiz ids')
+    # quiz_ids = get_quiz_ids(course_ids, quiz_search)
 
     # Standard pipeline
     populate_course_cache(course_ids)
