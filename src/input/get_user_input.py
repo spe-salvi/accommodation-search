@@ -129,10 +129,8 @@ logger = logging.getLogger(__name__)
 
 #     root.mainloop()
 
-def process_input(input_data):
+def process_code_input(input_data):
     if type(input_data[0]) != list and input_data[0] is not None:
-        terms = [input_data[0]]
-    elif type(input_data[0]) == list:
         terms = input_data[0]
     else: terms = None
     if type(input_data[1]) != list and input_data[1] is not None:
@@ -292,37 +290,61 @@ def create_input_form_merged():
             # accom_type= accom_type_var.get()           # slot 4
             # quiz_type = quiz_type_var.get()            # slot 5
             # date_filter = date_filter_var.get()        # slot 6
-            term_id = '115'
-            course_id = '12091'#'10348'
-            quiz_id = '179840'#'40122'
-            user_id = None#'5961'
-            accom_type = 'all'#'time'
-            quiz_type ='both'#'classic'
+            # term_id = '116'
+            # course_id = '12091'#'10348'
+            # quiz_id = '179840'#'40122'
+            # user_id = None#'5961'
+            # accom_type = 'all'#'time'
+            # quiz_type ='both'#'classic'
+            # date_filter = 'both'
+
+            term_id = 'Fall 2025'
+            course_id = 'MTH-156-OL-A'
+            quiz_id = 'Exam #2'
+            user_id = None
+            accom_type = 'all'
+            quiz_type ='new'
             date_filter = 'both'
 
             input_data = [term_id, course_id, quiz_id, user_id, accom_type, quiz_type, date_filter]
-            logger.info("Collected payload: %s", input_data)
+            logger.info(f"Collected payload: {input_data}")
 
-            cleaned_input = process_input(input_data)
-            logger.info("Cleaned input: %s", cleaned_input)
+            cleaned_input = process_code_input(input_data)
+            normalized_text_input = process_input.normalize_input(input_data)
+            logger.info(f"Cleaned input: {cleaned_input}")
+            logger.info(f"Normalized input: {normalized_text_input}")
 
             if clear_cache_var.get():
                 import utils.cache_manager as cache_manager
                 logger.info("Clearing all caches")
                 cache_manager.clear_all_caches()
 
-            logger.info("Calling populate_cache")
+            # logger.info("Calling populate_cache with code input")
+            # populate_cache.call_populate(
+            #     term_ids=cleaned_input[0], course_ids=cleaned_input[1],
+            #     quiz_ids=cleaned_input[2], user_ids=cleaned_input[3],
+            #     accom_type=cleaned_input[4]
+            # )
+
+            # logger.info("Building results DataFrame from code input")
+            # results_df = dataframe_utils.create_df(
+            #     course_ids=cleaned_input[1], quiz_ids=cleaned_input[2],
+            #     user_ids=cleaned_input[3], accom_type=cleaned_input[4],
+            #     quiz_type=cleaned_input[5], date_filter=cleaned_input[6]
+            # )
+
+            logger.info("Calling populate_cache with text input")
             populate_cache.call_populate(
-                term_ids=cleaned_input[0], course_ids=cleaned_input[1],
-                quiz_ids=cleaned_input[2], user_ids=cleaned_input[3],
-                accom_type=cleaned_input[4]
+                term_ids=normalized_text_input[0], course_ids=normalized_text_input[1],
+                quiz_ids=normalized_text_input[2], user_ids=normalized_text_input[3],
+                accom_type=normalized_text_input[4]
             )
 
-            logger.info("Building results DataFrame")
+            logger.info("Building results DataFrame from text input")
             results_df = dataframe_utils.create_df(
-                course_ids=cleaned_input[1], quiz_ids=cleaned_input[2],
-                user_ids=cleaned_input[3], accom_type=cleaned_input[4],
-                quiz_type=cleaned_input[5], date_filter=cleaned_input[6]
+                course_ids=normalized_text_input[1], quiz_ids=normalized_text_input[2],
+                user_ids=normalized_text_input[3], accom_type=normalized_text_input[4],
+                quiz_type=normalized_text_input[5], date_filter=normalized_text_input[6]
             )
 
             root.destroy()

@@ -214,7 +214,7 @@ def endpoint_quiz(data, term_id=None, course_id=None, quiz_id=None, user_id=None
     logger.info("endpoint_quiz called")
     global quiz_cache
 
-    if not data or not course_id or not quiz_id or term_id or user_id:
+    if not data or not course_id or not quiz_id:
         logger.error("endpoint_quiz: Invalid input provided; skipping quiz cache update.")
         return
 

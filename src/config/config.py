@@ -17,6 +17,7 @@ HEADERS = {
     }
 
 TERMS = {
+    116: 'Fall 2025',
     115: 'Summer 2025',
     114: 'Spring 2025',
     120: 'Fall 2024',

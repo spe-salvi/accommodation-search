@@ -120,7 +120,7 @@ def populate_user_cache(term_id, course_ids, user_ids):
     with ThreadPoolExecutor(max_workers=config.NUM_WORKERS) as executor:
         futures = [
             executor.submit(get_data, 'enrollments', term_id=term_id, user_id=uid)
-            for term_id in term_ids for uid in user_ids
+            for uid in user_ids
         ]
         for f in as_completed(futures):
             _ = f.result()
