@@ -54,7 +54,7 @@ def get_term_code(user_input: str) -> int | None:
     # Squash multiple spaces
     norm = re.sub(r"\s+", " ", norm)
     term_lookup = build_term_lookup()
-    return term_lookup.get(norm)
+    return str(term_lookup.get(norm))
 
 
 ####
@@ -112,7 +112,7 @@ def process_quiz_search(course_ids, quiz_name, quiz_type):
 
                 # Classic: just name match
                 # New: must also be an external tool (LTI quiz)
-                if name_match and (not is_new_quiz or "external_tool" in submission_types):
+                if name_match and (not is_new_quiz or ("external_tool" in submission_types or "online_quiz" in submission_types)):
                     quiz_ids.append(str(quiz.get("id")))
 
     # quiz_ids = list({qid for qid in quiz_ids if qid})  # dedupe + remove None

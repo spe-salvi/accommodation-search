@@ -6,6 +6,40 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+def create_df(course_ids=None, quiz_ids=None, user_ids=None,
+              accom_type=None, quiz_type=None, date_filter=None):
+
+    data_frames, question_df = fetch_all_data(accom_type)
+
+    if course_ids is None:
+        course_ids = data_frames["submission"]['Course ID Sub'].unique().tolist()
+    if user_ids is None:
+        user_ids = data_frames["submission"]['User ID Sub'].unique().tolist()
+    if quiz_ids is None:
+        quiz_ids = data_frames["submission"]['Quiz ID Sub'].unique().tolist()
+
+    accommodation_df = build_accommodation_df(
+        course_ids=course_ids,
+        user_ids=user_ids,
+        quiz_ids=quiz_ids,
+        accom_type=accom_type,
+        quiz_type=quiz_type,
+        date_filter=date_filter
+    )
+
+    if not data_frames or accommodation_df.empty:
+        logger.warning("One or more DataFrames are empty. Merging may result in an empty DataFrame.")
+        return pd.DataFrame()  # Return an empty DataFrame
+
+    normalize_all(data_frames, accommodation_df, question_df)
+
+    final_df = merge_all_data(data_frames, accommodation_df, question_df)
+
+    final_df = clean_and_filter(final_df, course_ids, quiz_ids, user_ids,
+                                accom_type, quiz_type, date_filter, question_df)
+
+    return final_df
+
 def build_accommodation_df(course_ids, quiz_ids, user_ids, accom_type, quiz_type, date_filter):
     """
     Build accommodation DataFrame for a set of courses, users, quizzes, and accommodation types.
@@ -87,37 +121,9 @@ def build_accommodation_df(course_ids, quiz_ids, user_ids, accom_type, quiz_type
                             qt
                         ]
 
+    # logger.info(acc_df)
+
     return acc_df
-
-def create_df(course_ids=None, quiz_ids=None, user_ids=None,
-              accom_type=None, quiz_type=None, date_filter=None):
-
-    data_frames, question_df = fetch_all_data(accom_type)
-
-    if course_ids is None:
-        course_ids = data_frames["submission"]['Course ID Sub'].unique().tolist()
-    if user_ids is None:
-        user_ids = data_frames["submission"]['User ID Sub'].unique().tolist()
-    if quiz_ids is None:
-        quiz_ids = data_frames["submission"]['Quiz ID Sub'].unique().tolist()
-
-    accommodation_df = build_accommodation_df(
-        course_ids=course_ids,
-        user_ids=user_ids,
-        quiz_ids=quiz_ids,
-        accom_type=accom_type,
-        quiz_type=quiz_type,
-        date_filter=date_filter
-    )
-
-    normalize_all(data_frames, accommodation_df, question_df)
-
-    final_df = merge_all_data(data_frames, accommodation_df, question_df)
-
-    final_df = clean_and_filter(final_df, course_ids, quiz_ids, user_ids,
-                                accom_type, quiz_type, date_filter, question_df)
-
-    return final_df
 
 def fetch_all_data(accom_type=None):
     data_frames = {
@@ -128,6 +134,8 @@ def fetch_all_data(accom_type=None):
         "submission": fetch.fetch_submission_df(),
     }
     question_df = fetch.fetch_question_df() if accom_type in ('spell_check', 'all') else None
+    if question_df is not None and question_df.empty:
+        question_df = None  # Treat empty question_df as None
     return data_frames, question_df
 
 def normalize_all(data_frames, accommodation_df, question_df=None):
@@ -155,7 +163,7 @@ def normalize_all(data_frames, accommodation_df, question_df=None):
     if question_df is not None:
         normalize_ids(question_df, ["Course ID Ques", "Quiz ID Ques", "Item ID Ques"])
 
-def merge_all_data(data_frames, accommodation_df, question_df=None):
+def merge_all_data(data_frames, accommodation_df, question_df):
     final_df = (
         data_frames["submission"]
         .merge(data_frames["term"], left_on="Course ID Sub", right_on="Course ID Term", how="left")

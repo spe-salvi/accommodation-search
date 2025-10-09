@@ -64,14 +64,14 @@ def get_urls(term_id=None, course_id=None, quiz_id=None, user_id=None, search_pa
 
     url_dict = {
         'term' : [f'{config.API_URL}/v1{config.FUS_ACCOUNT}/terms/{term_id}', {}],
-        'courses' : [f'{config.API_URL}/v1{config.FUS_ACCOUNT}/courses?search_term={search_param}', {"enrollment_term_id": term_id} if term_id else {}],
+        'courses': [f'{config.API_URL}/v1{config.FUS_ACCOUNT}/courses', {**({"search_term": search_param} if search_param else {}), **({"enrollment_term_id": term_id} if term_id else {})}],
         'course' : [f'{config.API_URL}/v1/courses/{course_id}', {}],
         'course_users' : [f'{config.API_URL}/v1/courses/{course_id}/users', {}],
-        'users' : [f'{config.API_URL}/v1{config.FUS_ACCOUNT}/users?search_term={search_param}', {}],
-        'c_quizzes' : [f'{config.API_URL}/v1/courses/{course_id}/quizzes?search_term={search_param}', {}],
+        'users' : [f'{config.API_URL}/v1{config.FUS_ACCOUNT}/users', {"search_term": search_param} if search_param else {}],
+        'c_quizzes' : [f'{config.API_URL}/v1/courses/{course_id}/quizzes', {"search_term": search_param} if search_param else {}],
         'c_quiz' : [f'{config.API_URL}/v1/courses/{course_id}/quizzes/{quiz_id}', {}],
         'c_quiz_submissions': [f'{config.API_URL}/v1/courses/{course_id}/quizzes/{quiz_id}/submissions', {}],
-        'n_quizzes' : [f'{config.API_URL}/quiz/v1/courses/{course_id}/quizzes?search_term={search_param}', {}],
+        'n_quizzes' : [f'{config.API_URL}/quiz/v1/courses/{course_id}/quizzes', {"search_term": search_param} if search_param else {}],
         'n_quiz' : [f'{config.API_URL}/quiz/v1/courses/{course_id}/quizzes/{quiz_id}', {}],
         'n_quiz_submissions': [f'{config.API_URL}/v1/courses/{course_id}/assignments/{quiz_id}/submissions', {}],
         'n_quiz_items': [f'{config.API_URL}/quiz/v1/courses/{course_id}/quizzes/{quiz_id}/items', {}],

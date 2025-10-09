@@ -47,17 +47,18 @@ def get_cached_submission(user_id, course_id, quiz_id):
     # logger.info(f'Submission cache [get_cached_submission]:\n{submission_cache}')
 
     uid = str(user_id)
+    cid = str(course_id)
+    qid = str(quiz_id)
     if uid not in submission_cache:
         logger.info(f"User ID {uid} not in submission_cache. Keys: {list(submission_cache.keys())}")
         return None
-    if course_id not in submission_cache[uid]:
-        logger.info(f"Course ID {course_id} not in cache for user {uid}. Keys: {list(submission_cache[uid].keys())}")
+    if cid not in submission_cache[uid]:
+        logger.info(f"Course ID {cid} not in cache for user {uid}. Keys: {list(submission_cache[uid].keys())}")
         return None
-    if quiz_id not in submission_cache[uid][course_id]:
-        logger.info(f"Quiz ID {quiz_id} not in cache for user {uid}, course {course_id}.")
+    if qid not in submission_cache[uid][cid]:
+        logger.info(f"Quiz ID {qid} not in cache for user {uid}, course {cid}.")
         return None
 
-    uid = str(user_id)
     return (
         submission_cache.get(uid, {})
                         .get(course_id, {})

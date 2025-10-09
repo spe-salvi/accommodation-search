@@ -91,7 +91,7 @@ def fetch_user_df():
 # quiz_cache = {quiz_id: {'title': ..., 'type': ..., 'course_id': ...}, ...}
 def fetch_quiz_df():
     # logger.info("Fetching quiz cache (fetch_quiz_df).")
-    quiz_cache = api_endpoints.quiz_cache
+    quiz_cache = api_endpoints.quiz_cache or {}
     logger.info(f'Loaded {len(quiz_cache)} quizzes from cache.')
     
     data = {
