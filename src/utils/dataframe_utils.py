@@ -24,8 +24,14 @@ def create_df(course_ids=None, quiz_ids=None, user_ids=None,
         quiz_ids=quiz_ids,
         accom_type=accom_type,
         quiz_type=quiz_type,
-        date_filter=date_filter
+        date_filter=date_filter,
+        quiz_df=data_frames["quiz"],
+        user_df=data_frames["user"],
+        question_df=question_df
     )
+
+    if accommodation_df.empty:
+        logger.warning("Accommodation DF Empty")
 
     if not data_frames or accommodation_df.empty:
         logger.warning("One or more DataFrames are empty. Merging may result in an empty DataFrame.")
@@ -40,15 +46,42 @@ def create_df(course_ids=None, quiz_ids=None, user_ids=None,
 
     return final_df
 
-def build_accommodation_df(course_ids, quiz_ids, user_ids, accom_type, quiz_type, date_filter):
+
+def fetch_all_data(accom_type=None):
+    data_frames = {
+        "term": fetch.fetch_term_df(),
+        "course": fetch.fetch_course_df(),
+        "user": fetch.fetch_user_df(),
+        "quiz": fetch.fetch_quiz_df(),
+        "submission": fetch.fetch_submission_df(),
+    }
+    question_df = fetch.fetch_question_df() if accom_type in ('spell_check', 'all') else None
+    if question_df is not None and question_df.empty:
+        question_df = None  # Treat empty question_df as None
+
+    logger.info("Term DF:")
+    logger.info(data_frames['term'])
+    logger.info("Course DF:")
+    logger.info(data_frames['course'])
+    logger.info("User DF:")
+    logger.info(data_frames['user'])
+    logger.info("Quiz DF:")
+    logger.info(data_frames['quiz'])
+    logger.info("Submission DF:")
+    logger.info(data_frames['submission'])
+    logger.info("Question DF:")
+    logger.info(question_df)
+    return data_frames, question_df
+
+
+def build_accommodation_df(course_ids, quiz_ids, user_ids, accom_type, quiz_type, date_filter,
+                           quiz_df=None, user_df=None, question_df=None):
     """
-    Build accommodation DataFrame for a set of courses, users, quizzes, and accommodation types.
-    Handles 'time', 'attempts', and 'split_test'.
-    Never leaves Accommodation Type as 'None'.
+    Vectorized build of accommodation DataFrame.
+    Handles 'time', 'attempts', 'split_test', 'spell_check'.
+    Accepts pre-fetched quiz_df, user_df, question_df.
     """
-    acc_df = pd.DataFrame(columns=[
-        'Course ID Acc', 'Quiz ID Acc', 'User ID Acc', 'Accommodation Type', 'Accommodation Date', 'Quiz Type'
-    ])
+    acc_rows = []
 
     # Determine which accommodations to check
     valid_accoms = []
@@ -64,79 +97,69 @@ def build_accommodation_df(course_ids, quiz_ids, user_ids, accom_type, quiz_type
     # Default quiz types
     quiz_types = ['classic', 'new'] if (quiz_type == 'both' or quiz_type is None) else [quiz_type]
 
-    for course_id in course_ids:
-        for quiz_id in quiz_ids:
-            for user_id in user_ids:
-                for qt in quiz_types:
+    # Create all combinations for time/attempts
+    if valid_accoms and set(valid_accoms) & {'time', 'attempts'}:
+        from itertools import product
+        for course_id, quiz_id, user_id, qt in product(course_ids, quiz_ids, user_ids, quiz_types):
+            for check_type in ['time', 'attempts']:
+                if check_type not in valid_accoms:
+                    continue
 
-                    # Check time/attempts accommodations
-                    for check_type in ['time', 'attempts']:
-                        if check_type not in valid_accoms:
-                            continue
+                accom_data = is_accommodated(course_id, quiz_id, user_id, check_type)
+                if accom_data[0]:
+                    accom_date = accom_data[1]
+                    if date_filter not in ('both', None) and accom_date != date_filter:
+                        continue
+                    acc_rows.append([str(course_id), str(quiz_id), str(user_id), check_type, accom_date, qt])
 
-                        accom_data = is_accommodated(course_id, quiz_id, user_id, check_type)
-                        if not accom_data[0]:
-                            continue
+    # Vectorized split_test
+    if 'split_test' in valid_accoms and quiz_df is not None and user_df is not None:
+        quiz_subset = quiz_df[quiz_df['Course ID Quiz'].isin(course_ids) & quiz_df['Quiz ID'].isin(quiz_ids)]
+        user_subset = user_df[user_df['User ID'].isin(user_ids)]
 
-                        accom_date = accom_data[1]
-                        if date_filter not in ('both', None) and accom_date != date_filter:
-                            continue
+        # Merge all user-quiz combinations
+        merged = user_subset.assign(key=1).merge(quiz_subset.assign(key=1), on='key', suffixes=('_user', '_quiz'))
+        merged = merged[(merged['Course ID Quiz'].isin(course_ids)) & (merged['Quiz ID'].isin(quiz_ids))]
+        merged = merged.drop(columns='key')
 
-                        acc_df.loc[len(acc_df)] = [
-                            str(course_id),
-                            str(quiz_id),
-                            str(user_id),
-                            check_type,
-                            accom_date,
-                            qt
-                        ]
+        # Extract last name safely
+        merged['last_name'] = merged['Sortable Name'].str.split(',', n=1).str[0].str.strip()
 
-                    # Check split_test accommodations
-                    title = fetch.fetch_quiz_title(course_id, quiz_id) or ""
-                    sortable_name = fetch.fetch_user_sortable_name(user_id) or ""
+        # Filter: last name exists AND title includes both "Part" and the last name
+        split_mask = merged.apply(
+            lambda row: (
+                isinstance(row['last_name'], str)
+                and row['last_name'] != ""
+                and "Part" in str(row['Title'])
+                and row['last_name'].lower() in str(row['Title']).lower()
+            ),
+            axis=1
+        )
+        
+        for qt in quiz_types:
+            split_rows = merged.loc[split_mask, ['Course ID Quiz', 'Quiz ID', 'User ID']].copy()
+            split_rows['Accommodation Type'] = 'split_test'
+            split_rows['Accommodation Date'] = 'past'                                                                                                               #TODO: fetch actual date
+            split_rows['Quiz Type'] = qt
+            acc_rows.extend(split_rows.values.tolist())
 
-                    # Extract last name safely
-                    last_name = sortable_name.split(",")[0].strip() if sortable_name else ""
+    # Vectorized spell_check
+    if 'spell_check' in valid_accoms and question_df is not None:
+        # Find quizzes that have spell_check
+        spell_quizzes = question_df[question_df['Spell Check'] == 'True'][['Course ID Ques', 'Quiz ID Ques']].drop_duplicates()
+        user_subset = user_df[user_df['User ID'].isin(user_ids)]
+        merged = user_subset.assign(key=1).merge(spell_quizzes.assign(key=1), on='key').drop(columns='key')
 
-                    # Only check if last_name exists
-                    if last_name and last_name in title and "Part" in title:
-                        accom_date = "past"  # or fetch if available
-                        acc_df.loc[len(acc_df)] = [
-                            str(course_id),
-                            str(quiz_id),
-                            str(user_id),
-                            'split_test',
-                            accom_date,
-                            qt
-                        ]
+        for qt in quiz_types:
+            merged['Accommodation Type'] = 'spell_check'
+            merged['Accommodation Date'] = 'past'                                                                                                                   #TODO: fetch actual date
+            merged['Quiz Type'] = qt
+            merged = merged.rename(columns={'Course ID Ques': 'Course ID Acc', 'Quiz ID Ques': 'Quiz ID Acc', 'User ID': 'User ID Acc'})
+            acc_rows.extend(merged[['Course ID Acc', 'Quiz ID Acc', 'User ID Acc', 'Accommodation Type', 'Accommodation Date', 'Quiz Type']].values.tolist())
 
-                    if 'spell_check' in valid_accoms:
-                        accom_date = "past"  # or fetch if available                                                        # TODO
-                        acc_df.loc[len(acc_df)] = [
-                            str(course_id),
-                            str(quiz_id),
-                            str(user_id),
-                            'spell_check',
-                            accom_date,
-                            qt
-                        ]
-
-    # logger.info(acc_df)
-
+    acc_df = pd.DataFrame(acc_rows, columns=['Course ID Acc', 'Quiz ID Acc', 'User ID Acc', 'Accommodation Type', 'Accommodation Date', 'Quiz Type'])
     return acc_df
 
-def fetch_all_data(accom_type=None):
-    data_frames = {
-        "term": fetch.fetch_term_df(),
-        "course": fetch.fetch_course_df(),
-        "user": fetch.fetch_user_df(),
-        "quiz": fetch.fetch_quiz_df(),
-        "submission": fetch.fetch_submission_df(),
-    }
-    question_df = fetch.fetch_question_df() if accom_type in ('spell_check', 'all') else None
-    if question_df is not None and question_df.empty:
-        question_df = None  # Treat empty question_df as None
-    return data_frames, question_df
 
 def normalize_all(data_frames, accommodation_df, question_df=None):
     normalize_map = {

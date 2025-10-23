@@ -318,29 +318,3 @@ def endpoint_items(data, term_id=None, course_id=None, quiz_id=None, user_id=Non
         f"{sum(len(q) for q in question_cache.get(cid, {}).values())} questions"
     )
     return
-
-#######################################################
-
-### Make quiz cache
-# quiz_cache = {quiz_id: {'title':title, 'type':type, 'course_id':course_id}, ...}
-def search_urls(url, course_id):
-    logger.info("search_urls called")
-    global quiz_cache
-    if not url or not course_id:
-        logging.error("search_urls: Invalid input provided; skipping URL search.")
-        return
-    response = requests.get(url, headers=config.HEADERS)
-    if response.status_code == 200:
-        data = response.json()
-        for quiz in data:
-            if 'id' not in quiz or 'title' not in quiz:
-                logging.error(f"search_urls: Missing key in provided data: {quiz}")
-                continue
-            quiz_id = str(quiz.get('id'))
-            quiz_cache.setdefault(quiz_id, {}).update({
-                'title': quiz.get('title', ''),
-                'time_limit': quiz.get('time_limit', ''),
-                'type': '',
-                'course_id': course_id
-            })
-    logger.info(f"Quiz cache after url search: {quiz_cache}")

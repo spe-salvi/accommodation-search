@@ -61,6 +61,6 @@ def get_cached_submission(user_id, course_id, quiz_id):
 
     return (
         submission_cache.get(uid, {})
-                        .get(course_id, {})
-                        .get(quiz_id)
+                        .get(cid, {})
+                        .get(qid)
     )

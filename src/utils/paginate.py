@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 def paginatedGet(url, headers, inputdata):
     perPageData = {"per_page": 100}
     mergedData = {**inputdata, **perPageData}
-    response = requests.get(url, data=mergedData, headers=headers)
+    response = requests.get(url, params=mergedData, headers=headers)
     # logger.info(f'URL: {url}')
     # logger.info(f"GET Response: {response.status_code}")
     data = response.json()

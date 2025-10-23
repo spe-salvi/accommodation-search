@@ -13,6 +13,5 @@ def main():
     elapsed = seconds / 60
 
     print(f'Elapsed time: {elapsed:.2f} minutes')
-
 if __name__ == "__main__":
     main()

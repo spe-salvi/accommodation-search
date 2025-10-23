@@ -133,13 +133,17 @@ def create_input_form_merged():
     bottom_bar.columnconfigure(0, weight=1)
 
     def generate_report():
+        import asyncio
+
         def norm(v):
             return v.strip() if v and v.strip() != "" else None
+
         try:
-            values = {}
-            for k,var in entry_vars.items():
-                v = var.get().strip()
-                values[k] = None if v=="" else v
+            values = {k: (norm(var.get()) if var.get() else None) for k, var in entry_vars.items()}
+            # accom_type = accom_type_var.get()
+            # quiz_type = quiz_type_var.get()
+            # date_filter = date_filter_var.get()
+            # clear_cache = clear_cache_var.get()
 
             # term_name = values.get("Term Name")
             # course_search = values.get("Course (ID / SIS ID / Code)")
@@ -158,48 +162,76 @@ def create_input_form_merged():
             # date_filter = 'both'
 
             term_name = 'Fall 2025'
-            course_search = 'MTH-156-OL-A'#'THE-115-OL-A'
-            quiz_name = 'Exam #2'#'Decalogue'
-            student_search = None#'2635745'
+            course_search = 'THE-115-OL-A'#'MTH-156-OL-A'
+            quiz_name = 'Decalogue'#'Exam #2'
+            student_search = ''#'2631150'#'2635745'
             accom_type = 'all'
             quiz_type = 'both'#'new'
             date_filter = 'both'
             clear_cache = True
 
-            input_data = [term_name, course_search, quiz_name, student_search, accom_type, quiz_type, date_filter]
-            logger.info(f"Collected payload: {input_data}")
+            input_data = [
+                term_name,
+                course_search,
+                quiz_name,
+                student_search,
+                accom_type,
+                quiz_type,
+                date_filter
+            ]
 
-            normalized_text_input = process_input.normalize_input(input_data)
-            logger.info(f"Normalized input: {normalized_text_input}")
+            # # Build the input list for normalize_input
+            # input_data = [
+            #     values.get("Term Name"),
+            #     values.get("Course (Name / SIS ID / Code)"),
+            #     values.get("Quiz Name"),
+            #     values.get("Student (Name / SIS ID / Login)"),
+            #     accom_type,
+            #     quiz_type,
+            #     date_filter
+            # ]
 
+            # Optionally clear all caches before populating
             if clear_cache:
                 import utils.cache_manager as cache_manager
                 logger.info("Clearing all caches")
                 cache_manager.clear_all_caches()
 
-            # if clear_cache_var.get():
-            #     import utils.cache_manager as cache_manager
-            #     logger.info("Clearing all caches")
-            #     cache_manager.clear_all_caches()
+            logger.info(f"Collected payload: {input_data}")
 
-            logger.info("Calling populate_cache with text input")
-            populate_cache.call_populate(
-                term_id=normalized_text_input[0], course_ids=normalized_text_input[1],
-                quiz_ids=normalized_text_input[2], user_ids=normalized_text_input[3],
-                accom_type=normalized_text_input[4]
-            )
+            # Normalize and resolve async dependencies (term_id, course_ids, etc.)
+            normalized_text_input = process_input.normalize_input(input_data)
+            logger.info(f"Normalized input: {normalized_text_input}")
 
-            logger.info("Building results DataFrame from text input")
-            results_df = dataframe_utils.create_df(
-                course_ids=normalized_text_input[1], quiz_ids=normalized_text_input[2],
-                user_ids=normalized_text_input[3], accom_type=normalized_text_input[4],
-                quiz_type=normalized_text_input[5], date_filter=normalized_text_input[6]
-            )
+
+
+            # Populate local cache
+            # logger.info("Calling populate_cache with normalized input")
+            # populate_cache.call_populate(
+            #     term_id=normalized_text_input[0],
+            #     course_ids=normalized_text_input[1],
+            #     quiz_ids=normalized_text_input[2],
+            #     user_ids=normalized_text_input[3],
+            #     accom_type=normalized_text_input[4]
+            # )
+
+            # # Build dataframe and display
+            # logger.info("Building results DataFrame")
+            # results_df = dataframe_utils.create_df(
+            #     course_ids=normalized_text_input[1],
+            #     quiz_ids=normalized_text_input[2],
+            #     user_ids=normalized_text_input[3],
+            #     accom_type=normalized_text_input[4],
+            #     quiz_type=normalized_text_input[5],
+            #     date_filter=normalized_text_input[6]
+            # )
 
             root.destroy()
-            print(results_df)
+            # print(results_df)
+
         except Exception as e:
             logger.exception("Error in generate_report: %s", e)
+            messagebox.showerror("Error", f"An error occurred:\n{e}")
 
     ttk.Button(bottom_bar, text="Generate Report", command=generate_report).grid(
         row=0, column=0, sticky="ew", padx=(120,120)

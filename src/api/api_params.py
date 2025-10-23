@@ -21,7 +21,6 @@ function_dict = {
     'c_quiz_submissions': endpoint_submissions,
     'n_quiz_submissions': endpoint_submissions,
     'n_quiz_items': endpoint_items,
-    'search_urls': search_urls,
     'enrollments': endpoint_enrollments
     }
 
@@ -79,47 +78,3 @@ def get_urls(term_id=None, course_id=None, quiz_id=None, user_id=None, search_pa
     }
 
     return url_dict
-
-############################################################
-
-def narrow_courses(term_id=None):
-    logger.info('Narrowing courses called')
-    cache_file = 'course_terms_cache.json'
-    cache_expiry = timedelta(days=1)
-    term_courses = {}
-
-    # Try loading cache
-    if os.path.exists(cache_file):
-        cache_time = datetime.fromtimestamp(os.path.getmtime(cache_file))
-        if datetime.now() - cache_time < cache_expiry:
-            try:
-                with open(cache_file, 'r') as f:
-                    term_courses = json.load(f)
-            except json.JSONDecodeError:
-                logger.error("Cache corrupted. Fetching fresh data.")
-                term_courses = get_data('courses',term_id = term_id)
-                # Get term_courses from cache, function returns null
-        else:
-            logger.error("Cache expired. Fetching fresh data.")
-            term_courses = get_data('courses',term_id = term_id)
-            # Get term_courses from cache, function returns null
-    else:
-        logger.error("Cache missing. Fetching fresh data.")
-        term_courses = get_data('courses',term_id = term_id)
-        # Get term_courses from cache, function returns null
-
-    # Check for missing term in cache
-    if term_id:
-        term_id = str(term_id)
-        if term_id not in term_courses:
-            logger.error(f"term_id {term_id} not found in cache; refreshing cache")
-            term_courses = get_data('courses',term_id = term_id)
-            # Get term_courses from cache, function returns null
-            return term_courses.get(term_id, [])
-        return term_courses.get(term_id, [])
-
-    # If no term_id, return all courses across all terms
-    all_courses = set()
-    for courses in term_courses.values():
-        all_courses.update(courses)
-    return list(all_courses)
