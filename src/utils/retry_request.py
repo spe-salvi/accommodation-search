@@ -16,8 +16,12 @@ def retry_get(url, params):
 
     retry_count = 0
     while retry_count < MAX_RETRIES:
+<<<<<<< HEAD
+        # logger.info(f"retry_get called with {url}")
+=======
         logger.info(f"retry_get called with URL: {url}")
         logger.info(f"Parameters: {params}")
+>>>>>>> 9059c6760f645c197a81fac1cde3d8b3a00b9d59
 
         try:
             data = paginatedGet(url, config.HEADERS, params)

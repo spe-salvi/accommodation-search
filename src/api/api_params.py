@@ -63,7 +63,11 @@ def get_urls(term_id=None, course_id=None, quiz_id=None, user_id=None, search_pa
 
     url_dict = {
         'term' : [f'{config.API_URL}/v1{config.FUS_ACCOUNT}/terms/{term_id}', {}],
+<<<<<<< HEAD
+        'courses' : [f'{config.API_URL}/v1{config.FUS_ACCOUNT}/courses', ({**({"enrollment_term_id": term_id} if term_id else {}), **({"search_term": search_param} if search_param else {})})],
+=======
         'courses': [f'{config.API_URL}/v1{config.FUS_ACCOUNT}/courses', {**({"search_term": search_param} if search_param else {}), **({"enrollment_term_id": term_id} if term_id else {})}],
+>>>>>>> 9059c6760f645c197a81fac1cde3d8b3a00b9d59
         'course' : [f'{config.API_URL}/v1/courses/{course_id}', {}],
         'course_users' : [f'{config.API_URL}/v1/courses/{course_id}/users', {}],
         'users' : [f'{config.API_URL}/v1{config.FUS_ACCOUNT}/users', {"search_term": search_param} if search_param else {}],
@@ -77,4 +81,52 @@ def get_urls(term_id=None, course_id=None, quiz_id=None, user_id=None, search_pa
         'enrollments' : [f'{config.API_URL}/v1/users/{user_id}/enrollments', {"enrollment_term_id": term_id} if term_id else {}],        
     }
 
+<<<<<<< HEAD
     return url_dict
+
+############################################################
+
+def narrow_courses(term_id=None):
+    # logger.info('Narrowing courses called')
+    cache_file = 'course_terms_cache.json'
+    cache_expiry = timedelta(days=1)
+    term_courses = {}
+
+    # Try loading cache
+    if os.path.exists(cache_file):
+        cache_time = datetime.fromtimestamp(os.path.getmtime(cache_file))
+        if datetime.now() - cache_time < cache_expiry:
+            try:
+                with open(cache_file, 'r') as f:
+                    term_courses = json.load(f)
+            except json.JSONDecodeError:
+                logger.error("Cache corrupted. Fetching fresh data.")
+                term_courses = get_data('courses',term_id = term_id)
+                # Get term_courses from cache, function returns null
+        else:
+            logger.error("Cache expired. Fetching fresh data.")
+            term_courses = get_data('courses',term_id = term_id)
+            # Get term_courses from cache, function returns null
+    else:
+        logger.error("Cache missing. Fetching fresh data.")
+        term_courses = get_data('courses',term_id = term_id)
+        # Get term_courses from cache, function returns null
+
+    # Check for missing term in cache
+    if term_id:
+        term_id = str(term_id)
+        if term_id not in term_courses:
+            logger.error(f"term_id {term_id} not found in cache; refreshing cache")
+            term_courses = get_data('courses',term_id = term_id)
+            # Get term_courses from cache, function returns null
+            return term_courses.get(term_id, [])
+        return term_courses.get(term_id, [])
+
+    # If no term_id, return all courses across all terms
+    all_courses = set()
+    for courses in term_courses.values():
+        all_courses.update(courses)
+    return list(all_courses)
+=======
+    return url_dict
+>>>>>>> 9059c6760f645c197a81fac1cde3d8b3a00b9d59

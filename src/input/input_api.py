@@ -1,9 +1,17 @@
+<<<<<<< HEAD
+import config.config as config
+import re
+import logging
+
+logging.basicConfig(level=logging.INFO)
+=======
 import asyncio
 import logging
 import re
 from utils.retry_request import retry_get
 import config.config as config
 
+>>>>>>> 9059c6760f645c197a81fac1cde3d8b3a00b9d59
 logger = logging.getLogger(__name__)
 
 # =====================================================
@@ -18,6 +26,10 @@ def get_term_id(term_name: str) -> str | None:
         return None
 
     lookup = {}
+<<<<<<< HEAD
+    logger.info(f'Term Name: {term_name}')
+=======
+>>>>>>> 9059c6760f645c197a81fac1cde3d8b3a00b9d59
     for code, full in config.TERMS.items():
         season, year = full.split()
         year = int(year)
@@ -27,6 +39,10 @@ def get_term_id(term_name: str) -> str | None:
             for y in year_variants:
                 lookup[f"{s} {y}"] = code
 
+<<<<<<< HEAD
+    norm = str(re.sub(r"\s+", " ", term_name.strip().lower()))
+    return lookup.get(norm)
+=======
     norm = re.sub(r"\s+", " ", term_name.strip().lower())
     return str(lookup.get(norm))
 
@@ -174,3 +190,4 @@ async def get_quiz_ids_from_courses(course_ids: list[str], quiz_name: str, quiz_
     quiz_ids = list({qid for sub in results for qid in sub})
     logger.info(f"Resolved {len(quiz_ids)} total quiz(es) named '{quiz_name}' across {len(course_ids)} course(s)")
     return quiz_ids
+>>>>>>> 9059c6760f645c197a81fac1cde3d8b3a00b9d59

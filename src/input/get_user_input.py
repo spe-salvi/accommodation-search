@@ -16,7 +16,11 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 import ttkbootstrap as ttkb
 
+<<<<<<< HEAD
+def create_input_form():
+=======
 def create_input_form_merged():
+>>>>>>> 9059c6760f645c197a81fac1cde3d8b3a00b9d59
     root = tk.Tk()
     root.title("Accommodations Search (Names & SIS IDs)")
     root.geometry("800x600")
@@ -200,7 +204,11 @@ def create_input_form_merged():
             logger.info(f"Collected payload: {input_data}")
 
             # Normalize and resolve async dependencies (term_id, course_ids, etc.)
+<<<<<<< HEAD
+            normalized_text_input = populate_cache.call_populate(input_data=input_data)
+=======
             normalized_text_input = process_input.normalize_input(input_data)
+>>>>>>> 9059c6760f645c197a81fac1cde3d8b3a00b9d59
             logger.info(f"Normalized input: {normalized_text_input}")
 
 

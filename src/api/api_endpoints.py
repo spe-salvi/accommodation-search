@@ -13,7 +13,7 @@ quiz_cache, submission_cache = {}, {}
 ### Make term cache
 # term_cache = {term_id: {'name': term_name, 'courses': (course_id, course_id, course_id)}, ...}
 def endpoint_term(data, term_id=None, course_id=None, quiz_id=None, user_id=None):
-    logger.info("endpoint_term called")
+    # logger.info("endpoint_term called")
     with cache_lock:
         term_cache = cache_manager.load_term_cache()
         if not term_id:
@@ -28,12 +28,12 @@ def endpoint_term(data, term_id=None, course_id=None, quiz_id=None, user_id=None
             term_entry["courses"] = []
         term_cache[term_id] = term_entry
         cache_manager.save_term_cache()
-    logger.info(f"Term cache after term endpoint: {len(term_cache)} terms")
+    # logger.info(f"Term cache after term endpoint: {len(term_cache)} terms")
 
 ### Make term cache
 # term_cache = {term_id: {'name': term_name, 'courses': (course_id, course_id, course_id)}, ...}
 def endpoint_courses(data, term_id=None, course_id=None, quiz_id=None, user_id=None):
-    logger.info("endpoint_courses called")
+    # logger.info("endpoint_courses called")
     if (not data) or course_id or quiz_id or user_id:
         return None
 
@@ -43,7 +43,7 @@ def endpoint_courses(data, term_id=None, course_id=None, quiz_id=None, user_id=N
         term_cache = cache_manager.load_term_cache()
         for course in data:
             if 'id' not in course or 'enrollment_term_id' not in course:
-                logging.error(f"endpoint_courses: Missing 'id' or 'enrollment_term_id' in provided data: {course}")
+                # logging.error(f"endpoint_courses: Missing 'id' or 'enrollment_term_id' in provided data: {course}")
                 continue
             course_id = str(course.get('id'))
             ret_ids.append(course_id)
@@ -63,17 +63,17 @@ def endpoint_courses(data, term_id=None, course_id=None, quiz_id=None, user_id=N
             term_cache[enrollment_term_id] = term_entry
 
         cache_manager.save_term_cache()
-    logger.info(f"Term cache after courses endpoint: {len(term_cache)} terms")
+    # logger.info(f"Term cache after courses endpoint: {len(term_cache)} terms")
     return ret_ids
 
 
 ### Add quizzes to course cache
 # course_cache = {course_id: { 'code': course_code, 'name': course_name, 'term': term_id, 'users': [user_id, user_id, user_id], 'quizzes': [quiz_id, quiz_id, quiz_id]}, ...}
 def endpoint_quizzes(data, term_id=None, course_id=None, quiz_id=None, user_id=None):
-    logger.info("endpoint_quizzes called")
+    # logger.info("endpoint_quizzes called")
 
     if not data or not course_id:
-        logging.error("endpoint_quizzes: Invalid input provided; skipping course cache update.")
+        # logging.error("endpoint_quizzes: Invalid input provided; skipping course cache update.")
         return
 
     cid = str(course_id)
@@ -87,7 +87,7 @@ def endpoint_quizzes(data, term_id=None, course_id=None, quiz_id=None, user_id=N
 
         for quiz in data:
             if 'id' not in quiz:
-                logger.error(f"endpoint_quizzes: Missing 'id' in provided data: {quiz}")
+                # logger.error(f"endpoint_quizzes: Missing 'id' in provided data: {quiz}")
                 continue
             qid = str(quiz.get('id'))
             quiz_ids.append(qid)
@@ -97,17 +97,17 @@ def endpoint_quizzes(data, term_id=None, course_id=None, quiz_id=None, user_id=N
         course_cache[cid] = c_cache
         cache_manager.save_course_cache()
 
-    logger.info(f"Course cache after quizzes endpoint: {len(course_cache)} courses")
+    # logger.info(f"Course cache after quizzes endpoint: {len(course_cache)} courses")
     return quiz_ids
 
 
 ### Make user cache
 # user_cache = {user_id: {'name': sortable_name, 'sis_id': sis_user_id, 'email': email, 'courses': (course_id, course_id, course_id)}, ...}
 def endpoint_enrollments(data=None, term_id=None, course_id=None, quiz_id=None, user_id=None):
-    logger.info("endpoint_enrollments called")
+    # logger.info("endpoint_enrollments called")
 
     if not data or not user_id:
-        logger.error("endpoint_enrollments: Invalid input provided; skipping user cache update.")
+        # logger.error("endpoint_enrollments: Invalid input provided; skipping user cache update.")
         return
 
     with cache_lock:
@@ -127,12 +127,12 @@ def endpoint_enrollments(data=None, term_id=None, course_id=None, quiz_id=None, 
         user_cache[uid] = u_cache
         cache_manager.save_user_cache()
 
-    logger.info(f"User cache after enrollments endpoint: {len(user_cache)} users")
+    # logger.info(f"User cache after enrollments endpoint: {len(user_cache)} users")
 
 ### Make course cache
 # course_cache = {course_id: { 'code': course_code, 'name': course_name, 'term': term_id, 'users': [user_id, user_id, user_id], 'quizzes': [quiz_id, quiz_id, quiz_id]}, ...}
 def endpoint_course(data, term_id=None, course_id=None, quiz_id=None, user_id=None):
-    logger.info("endpoint_course called")
+    # logger.info("endpoint_course called")
 
     if not data:
         logging.error("endpoint_course: No data provided; skipping course cache update.")
@@ -155,13 +155,13 @@ def endpoint_course(data, term_id=None, course_id=None, quiz_id=None, user_id=No
         course_cache[cid] = cache
         cache_manager.save_course_cache()
 
-    logger.info(f"Course cache after course endpoint: {len(course_cache)} courses")
+    # logger.info(f"Course cache after course endpoint: {len(course_cache)} courses")
 
 # Add users to course cache
 # course_cache = {course_id: { 'code': course_code, 'name': course_name, 'term': term_id, 'users': [user_id, user_id, user_id], 'quizzes': [quiz_id, quiz_id, quiz_id]}, ...}
 # user_cache = {user_id: {'name': sortable_name, 'sis_id': sis_user_id, 'email': email, 'courses': [course_id, course_id, course_id]}, ...}
 def endpoint_course_users(data, term_id=None, course_id=None, quiz_id=None, user_id=None):
-    logger.info("endpoint_course_users called")
+    # logger.info("endpoint_course_users called")
 
     if not data or not course_id:
         logging.error("endpoint_course_users: Invalid input provided; skipping cache updates.")
@@ -203,15 +203,15 @@ def endpoint_course_users(data, term_id=None, course_id=None, quiz_id=None, user
         cache_manager.save_course_cache()
         cache_manager.save_user_cache()
 
-    logger.info(f"User cache after course_users endpoint: {len(user_cache)} users")
-    logger.info(f"Course cache after course_users endpoint: {len(course_cache)} courses")
+    # logger.info(f"User cache after course_users endpoint: {len(user_cache)} users")
+    # logger.info(f"Course cache after course_users endpoint: {len(course_cache)} courses")
     return list(set(user_ids))
 
 
 ### Make quiz cache
 # quiz_cache = {quiz_id: {'title':title, 'type':type, 'course_id':course_id}, ...}
 def endpoint_quiz(data, term_id=None, course_id=None, quiz_id=None, user_id=None, acc_type=''):
-    logger.info("endpoint_quiz called")
+    # logger.info("endpoint_quiz called")
     global quiz_cache
 
     if not data or not course_id or not quiz_id:
@@ -226,12 +226,12 @@ def endpoint_quiz(data, term_id=None, course_id=None, quiz_id=None, user_id=None
             'course_id': course_id
         })
 
-    logger.info(f"Quiz cache after quiz endpoint: {len(quiz_cache)} quizzes")
+    # logger.info(f"Quiz cache after quiz endpoint: {len(quiz_cache)} quizzes")
 
 ### Make submission cache
 # submission_cache = {user_id: {course_id: {quiz_id: {'extra_time': extra_time, 'extra_attempts': extra_attempts, 'date': date}, ...}, ...}, ...}
 def endpoint_submissions(data, term_id=None, course_id=None, quiz_id=None, user_id=None):
-    logger.info("endpoint_submissions called")
+    # logger.info("endpoint_submissions called")
     global submission_cache
 
     if not data or not course_id or not quiz_id:
@@ -268,15 +268,15 @@ def endpoint_submissions(data, term_id=None, course_id=None, quiz_id=None, user_
                 )
             }
 
-            logger.info(f"✅ Cached submission: user={uid}, course={course_id}, quiz={quiz_id}")
+            # logger.info(f"✅ Cached submission: user={uid}, course={course_id}, quiz={quiz_id}")
 
-    logger.info(f"Full submission cache: {len(submission_cache)} users")
+    # logger.info(f"Full submission cache: {len(submission_cache)} users")
 
 # TODO: Finish this method
 # Define endpoints, construct cache
 # question_cache: {course_id: {quiz_id: {item_id: {'question_type':question_type, 'spell_check':(boolean)}}}}
 def endpoint_items(data, term_id=None, course_id=None, quiz_id=None, user_id=None):
-    logger.info("endpoint_items called")
+    # logger.info("endpoint_items called")
 
     if not data or not (course_id and quiz_id):
         logging.error("endpoint_items: Invalid input provided; skipping cache updates.")
@@ -304,17 +304,51 @@ def endpoint_items(data, term_id=None, course_id=None, quiz_id=None, user_id=Non
                     "spell_check": bool(spell_check),
                 }
 
-                logger.info(
-                    f"Cached Q: C:{cid}, Q:{qid}, Item:{item_id}, "
-                    f"Type:{q_type}, SpellCheck:{spell_check}"
-                )
+                # logger.info(
+                    # f"Cached Q: C:{cid}, Q:{qid}, Item:{item_id}, "
+                    # f"Type:{q_type}, SpellCheck:{spell_check}"
+                # )
             except Exception as e:
                 logger.error(f"Error processing item {item}: {e}")
 
         cache_manager.save_question_cache()
 
+<<<<<<< HEAD
+    # logger.info(
+        # f"Question cache after item endpoint: "
+        # f"{sum(len(q) for q in question_cache.get(cid, {}).values())} questions"
+    # )
+    return
+
+#######################################################
+
+### Make quiz cache
+# quiz_cache = {quiz_id: {'title':title, 'type':type, 'course_id':course_id}, ...}
+def search_urls(url, course_id):
+    # logger.info("search_urls called")
+    global quiz_cache
+    if not url or not course_id:
+        logging.error("search_urls: Invalid input provided; skipping URL search.")
+        return
+    response = requests.get(url, headers=config.HEADERS)
+    if response.status_code == 200:
+        data = response.json()
+        for quiz in data:
+            if 'id' not in quiz or 'title' not in quiz:
+                logging.error(f"search_urls: Missing key in provided data: {quiz}")
+                continue
+            quiz_id = str(quiz.get('id'))
+            quiz_cache.setdefault(quiz_id, {}).update({
+                'title': quiz.get('title', ''),
+                'time_limit': quiz.get('time_limit', ''),
+                'type': '',
+                'course_id': course_id
+            })
+    # logger.info(f"Quiz cache after url search: {quiz_cache}")
+=======
     logger.info(
         f"Question cache after item endpoint: "
         f"{sum(len(q) for q in question_cache.get(cid, {}).values())} questions"
     )
     return
+>>>>>>> 9059c6760f645c197a81fac1cde3d8b3a00b9d59
