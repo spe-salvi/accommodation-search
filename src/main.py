@@ -1,6 +1,6 @@
-import input.get_user_input as get_user_input
+import ui.get_user_input as get_user_input
 import time
-from config.config import *
+from config import *
 
 def main():
     start = time.perf_counter()

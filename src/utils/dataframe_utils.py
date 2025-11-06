@@ -1,5 +1,5 @@
-from quizzes.quizzes import is_accommodated
-import utils.fetch as fetch
+from api.data_processors.submission import is_accommodated
+import fetch.fetch_dfs as fetch_dfs
 import pandas as pd
 import logging
 
@@ -49,13 +49,13 @@ def create_df(course_ids=None, quiz_ids=None, user_ids=None,
 
 def fetch_all_data(accom_type=None):
     data_frames = {
-        "term": fetch.fetch_term_df(),
-        "course": fetch.fetch_course_df(),
-        "user": fetch.fetch_user_df(),
-        "quiz": fetch.fetch_quiz_df(),
-        "submission": fetch.fetch_submission_df(),
+        "term": fetch_dfs.fetch_term_df(),
+        "course": fetch_dfs.fetch_course_df(),
+        "user": fetch_dfs.fetch_user_df(),
+        "quiz": fetch_dfs.fetch_quiz_df(),
+        "submission": fetch_dfs.fetch_submission_df(),
     }
-    question_df = fetch.fetch_question_df() if accom_type in ('spell_check', 'all') else None
+    question_df = fetch_dfs.fetch_question_df() if accom_type in ('spell_check', 'all') else None
     if question_df is not None and question_df.empty:
         question_df = None  # Treat empty question_df as None
 
