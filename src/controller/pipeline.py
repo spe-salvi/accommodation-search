@@ -1,6 +1,9 @@
 import asyncio
 import logging
-import input.input_api as input_api
+import processors.course as course_processor
+import processors.term as term_processor
+import processors.user as user_processor
+import processors.quiz as quiz_processor
 
 logger = logging.getLogger(__name__)
 
@@ -69,15 +72,15 @@ async def compute_course_candidates(ctx):
     # If user_ids are present, get their enrolled courses
     if ctx.user_ids:
         logger.info("compute_course_candidates: scheduling user enrollments fetch")
-        tasks.append(input_api.get_course_ids_by_users(ctx.user_ids, ctx.term_id))
+        tasks.append(course_processor.get_course_ids_by_users(ctx.user_ids, ctx.term_id))
 
     # If a course search string exists, search courses in term (or global if term missing)
     if ctx.course_input and ctx.course_input.strip():
-        tasks.append(input_api.get_course_ids_by_term_and_search(ctx.term_id or "", ctx.course_input))
+        tasks.append(course_processor.get_course_ids_by_term_and_search(ctx.term_id or "", ctx.course_input))
 
     # If no other filters but term is present, get all courses in term
     if not tasks and ctx.term_id:
-        tasks.append(input_api.get_course_ids_by_term_and_search(ctx.term_id, ""))
+        tasks.append(course_processor.get_course_ids_by_term_and_search(ctx.term_id, ""))
 
     if not tasks:
         logger.info("compute_course_candidates: no candidate sources found")
@@ -110,10 +113,10 @@ async def compute_user_candidates(ctx):
     """
     tasks = []
     if ctx.user_input:
-        tasks.append(input_api.get_user_ids_by_search(ctx.term_id, ctx.user_input))
+        tasks.append(user_processor.get_user_ids_by_search(ctx.term_id, ctx.user_input))
 
     if ctx.course_ids:
-        tasks.append(input_api.get_user_ids_by_courses(ctx.course_ids))
+        tasks.append(user_processor.get_user_ids_by_courses(ctx.course_ids))
 
     if not tasks:
         return []
@@ -131,7 +134,7 @@ async def compute_user_candidates(ctx):
 # -----------------------------
 STRATEGIES = {
     "term_id": [
-        (lambda c: c.term_input, lambda c: input_api.get_term_id(c.term_input))
+        (lambda c: c.term_input, lambda c: term_processor.get_term_id(c.term_input))
     ],
 
     "user_ids": [
@@ -146,9 +149,9 @@ STRATEGIES = {
     "quiz_ids": [
         # Only valid when courses are known
         (lambda c: c.course_ids and c.quiz_name,
-         lambda c: input_api.get_quiz_ids_from_courses(c.course_ids, c.quiz_name, c.quiz_type)),
+         lambda c: quiz_processor.get_quiz_ids_from_courses(c.course_ids, c.quiz_name, c.quiz_type)),
         (lambda c: c.course_ids and not c.quiz_name,
-         lambda c: input_api.get_quiz_ids_from_courses(c.course_ids, "", c.quiz_type)),
+         lambda c: quiz_processor.get_quiz_ids_from_courses(c.course_ids, "", c.quiz_type)),
     ]
 }
 

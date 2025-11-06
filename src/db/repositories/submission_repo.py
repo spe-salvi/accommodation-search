@@ -36,12 +36,13 @@ class SubmissionRepository:
         cur = self.conn.execute("""
             SELECT * FROM submission_store
             WHERE user_id = ? AND course_id = ? AND quiz_id = ?
-        """, (user_id, course_id, quiz_id))
+        """, (str(user_id), str(course_id), str(quiz_id)))
         return cur.fetchone()
 
     def get_submissions_by_user(self, user_id):
-        cur = self.conn.execute("SELECT * FROM submission_store WHERE user_id = ?", (user_id,))
+        cur = self.conn.execute("SELECT * FROM submission_store WHERE user_id = ?", (str(user_id),))
         return [dict(row) for row in cur.fetchall()]
 
     def list_all(self):
         cur = self.conn.execute("SELECT * FROM submission_store")
+        return [dict(row) for row in cur.fetchall()]

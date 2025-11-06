@@ -48,7 +48,8 @@ CREATE TABLE IF NOT EXISTS user_courses (
 CREATE TABLE IF NOT EXISTS quiz_store (
     quiz_id TEXT PRIMARY KEY,
     title TEXT,
-    type TEXT,
+    time_limit TEXT,
+    acc_type TEXT,
     course_id TEXT
 );
 

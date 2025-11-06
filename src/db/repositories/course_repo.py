@@ -42,15 +42,15 @@ class CourseRepository:
         self.conn.commit()
 
     def get_courses_by_term(self, term_id):
-        cur = self.conn.execute("SELECT * FROM course_store WHERE term_id = ?", (term_id,))
+        cur = self.conn.execute("SELECT * FROM course_store WHERE term_id = ?", (str(term_id),))
         return [dict(row) for row in cur.fetchall()]
 
     def get_users_for_course(self, course_id):
-        cur = self.conn.execute("SELECT user_id FROM course_users WHERE course_id = ?", (course_id,))
+        cur = self.conn.execute("SELECT user_id FROM course_users WHERE course_id = ?", (str(course_id),))
         return [row["user_id"] for row in cur.fetchall()]
 
     def get_quizzes_for_course(self, course_id):
-        cur = self.conn.execute("SELECT quiz_id FROM course_quizzes WHERE course_id = ?", (course_id,))
+        cur = self.conn.execute("SELECT quiz_id FROM course_quizzes WHERE course_id = ?", (str(course_id),))
         return [row["quiz_id"] for row in cur.fetchall()]
 
     def list_courses(self):

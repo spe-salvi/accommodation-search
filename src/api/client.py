@@ -1,9 +1,10 @@
 import config as config
 from processors.term import *
 from processors.course import *
-from processors.submission import endpoint_submissions
-from processors.quiz import endpoint_quiz
-from processors.question import endpoint_items
+from processors.user import *
+from processors.submission import *
+from processors.quiz import *
+from processors.question import *
 import utils.retry_request as retry_request
 import logging
 
@@ -22,7 +23,8 @@ function_dict = {
     'n_quiz': endpoint_quiz,
     'c_quiz_submissions': endpoint_submissions,
     'n_quiz_submissions': endpoint_submissions,
-    'n_quiz_items': endpoint_items
+    'n_quiz_items': endpoint_items,
+    'enrollments': endpoint_enrollments
     }
 
 
@@ -76,7 +78,8 @@ def get_urls(term_id=None, course_id=None, quiz_id=None, user_id=None, search_pa
         'n_quizzes' : [f'{config.API_URL}/quiz/v1/courses/{course_id}/quizzes', {"search_term": search_param} if search_param else {}],
         'n_quiz' : [f'{config.API_URL}/quiz/v1/courses/{course_id}/quizzes/{quiz_id}', {}],
         'n_quiz_submissions': [f'{config.API_URL}/v1/courses/{course_id}/assignments/{quiz_id}/submissions', {}],
-        'n_quiz_items': [f'{config.API_URL}/quiz/v1/courses/{course_id}/quizzes/{quiz_id}/items', {}]     
+        'n_quiz_items': [f'{config.API_URL}/quiz/v1/courses/{course_id}/quizzes/{quiz_id}/items', {}],
+        'enrollments' : [f'{config.API_URL}/v1/users/{user_id}/enrollments', {"enrollment_term_id": term_id} if term_id else {}],        
     }
 
     return url_dict

@@ -1,7 +1,6 @@
 import re
 import logging
 import config as config
-from utils.retry_request import retry_get
 from db.repositories.term_repo import TermRepository
 
 logger = logging.getLogger(__name__)
@@ -37,18 +36,22 @@ def endpoint_term(data, term_id=None, **kwargs):
     if not data:
         logger.warning("endpoint_term called with empty data.")
         return
-
+    
     if not term_id:
+        if 'id' not in data:
+            logging.error(f"endpoint_term: The 'id' key is missing in the provided data. {term_id}")
+            return
         term_id = str(data.get('id'))
 
     name = data.get('name', '')
+
     if not term_id or not name:
         logger.warning("Invalid term data, missing id or name.")
         return
 
     term_repo.upsert(term_id, name)
     logger.info(f"Persisted term {term_id}: {name}")
-    return term_id
+    return
 
 
 def endpoint_courses(data, term_id=None, **kwargs):
@@ -67,4 +70,4 @@ def endpoint_courses(data, term_id=None, **kwargs):
         linked_ids.append(cid)
 
     logger.info(f"Linked {len(linked_ids)} courses to term {term_id or tid}")
-    return linked_ids
+    return

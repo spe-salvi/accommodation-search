@@ -1,13 +1,28 @@
-from api.data_processors.submission import is_accommodated
+from processors.submission import is_accommodated
 import fetch.fetch_dfs as fetch_dfs
 import pandas as pd
 import logging
+from db.repositories.course_repo import CourseRepository
+from db.repositories.quiz_repo import QuizRepository
+from db.repositories.user_repo import UserRepository
+from db.repositories.submission_repo import SubmissionRepository
+from db.repositories.term_repo import TermRepository
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 def create_df(course_ids=None, quiz_ids=None, user_ids=None,
               accom_type=None, quiz_type=None, date_filter=None):
+
+    course_repo = CourseRepository()
+    quiz_repo = QuizRepository()
+    user_repo = UserRepository()
+    submission_repo = SubmissionRepository()
+
+    courses = [c for cid in course_ids for c in course_repo.get_by_id(cid)]
+    quizzes = [q for cid in course_ids for q in quiz_repo.get_by_course(cid)]
+    users = [u for cid in course_ids for u in user_repo.get_users_by_course(cid)]
+    submissions = [s for cid in course_ids for s in submission_repo.get_all_by_course(cid)]
 
     data_frames, question_df = fetch_all_data(accom_type)
 
@@ -32,6 +47,7 @@ def create_df(course_ids=None, quiz_ids=None, user_ids=None,
 
     if accommodation_df.empty:
         logger.warning("Accommodation DF Empty")
+        return data_frames
 
     if not data_frames or accommodation_df.empty:
         logger.warning("One or more DataFrames are empty. Merging may result in an empty DataFrame.")

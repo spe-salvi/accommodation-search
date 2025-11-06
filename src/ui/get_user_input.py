@@ -9,7 +9,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def create_input_form_merged():
+def create_input_form():
     root = tk.Tk()
     root.title("Accommodations Search (Names & SIS IDs)")
     root.geometry("800x600")
@@ -97,10 +97,13 @@ def create_input_form_merged():
     bottom_bar.grid(row=1, column=0, sticky="ew")
     bottom_bar.columnconfigure(0, weight=1)
 
-    generate_report(entry_vars)
-    root.destroy()
 
-    ttk.Button(bottom_bar, text="Generate Report", command=generate_report).grid(
+
+    def on_generate():
+        print(generate_report(entry_vars))
+        root.destroy()
+
+    ttk.Button(bottom_bar, text="Generate Report", command=on_generate).grid(
         row=0, column=0, sticky="ew", padx=(120,120)
     )
 

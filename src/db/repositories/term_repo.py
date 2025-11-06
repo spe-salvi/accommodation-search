@@ -1,29 +1,15 @@
 import sqlite3
 import logging
+from db.database import get_connection
+
+
 
 logger = logging.getLogger(__name__)
 
 class TermRepository:
-    def __init__(self, db_path='data.db'):
-        self.conn = sqlite3.connect(db_path)
+    def __init__(self):
+        self.conn = get_connection()
         self.conn.row_factory = sqlite3.Row
-        self._create_tables()
-
-    def _create_tables(self):
-        self.conn.execute("""
-            CREATE TABLE IF NOT EXISTS term_store (
-                term_id TEXT PRIMARY KEY,
-                name TEXT
-            )
-        """)
-        self.conn.execute("""
-            CREATE TABLE IF NOT EXISTS term_courses (
-                term_id TEXT,
-                course_id TEXT,
-                PRIMARY KEY (term_id, course_id)
-            )
-        """)
-        self.conn.commit()
 
     def upsert(self, term_id: str, name: str):
         try:
@@ -49,11 +35,11 @@ class TermRepository:
             logger.error(f"Error linking course {course_id} to term {term_id}: {e}")
 
     def get_term(self, term_id: str):
-        cur = self.conn.execute("SELECT * FROM term_store WHERE term_id = ?", (term_id,))
+        cur = self.conn.execute("SELECT * FROM term_store WHERE term_id = ?", (str(term_id),))
         return cur.fetchone()
 
     def get_courses_for_term(self, term_id: str):
-        cur = self.conn.execute("SELECT course_id FROM term_courses WHERE term_id = ?", (term_id,))
+        cur = self.conn.execute("SELECT course_id FROM term_courses WHERE term_id = ?", (str(term_id),))
         return [row['course_id'] for row in cur.fetchall()]
 
     def list_terms(self):

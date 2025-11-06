@@ -65,10 +65,10 @@ def endpoint_quiz(data, term_id=None, course_id=None, quiz_id=None, user_id=None
         return
 
     title = data.get('title', '')
-    quiz_type = acc_type or 'classic'
+    time_limit = data.get('time_limit', '')
 
-    quiz_repo.upsert(str(quiz_id), title, quiz_type, str(course_id))
+    quiz_repo.upsert(str(quiz_id), title, time_limit, acc_type, str(course_id))
     quiz_repo.link_to_course(str(course_id), str(quiz_id))
 
-    logger.info(f"Stored quiz {quiz_id}: {title} ({quiz_type}) in course {course_id}")
-    return quiz_id
+    logger.info(f"Stored quiz {quiz_id}: {title} ({acc_type}) in course {course_id}")
+    return

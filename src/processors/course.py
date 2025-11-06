@@ -1,8 +1,45 @@
 import logging
+import processors.user as user
 from db.repositories.course_repo import CourseRepository
 
 logger = logging.getLogger(__name__)
 course_repo = CourseRepository()
+
+
+def get_course_ids_by_term_and_search(term_id: str, course_input: str):
+    """
+    Return course_ids that match the input text within a specific term.
+    """
+    courses = course_repo.list_all()
+    results = []
+
+    for c in courses:
+        if term_id and c.get("term_id") != str(term_id):
+            continue
+        if course_input and course_input.lower() not in str(c.get("name", "")).lower():
+            continue
+        results.append(c["course_id"])
+
+    logger.info(f"Found {len(results)} courses matching '{course_input}' in term {term_id}")
+    return results
+
+
+def get_course_ids_by_users(user_ids, term_id=None):
+    """
+    Return all course_ids that a user is enrolled in, optionally filtering by term.
+    """
+    course_repo = CourseRepository()
+    all_courses = course_repo.list_all()
+    user_courses = []
+
+    for uid in user_ids:
+        for c in course_repo.list_all():
+            users = user.get_user_ids_by_courses(c["course_id"])
+            if any(u["user_id"] == uid for u in users):
+                if not term_id or str(c.get("term_id")) == str(term_id):
+                    user_courses.append(c["course_id"])
+    return list(set(user_courses))
+
 
 def endpoint_courses(data, term_id=None, **kwargs):
     """
@@ -41,20 +78,20 @@ def endpoint_course(data, term_id=None, **kwargs):
     """
     if not data:
         logger.warning("endpoint_course called with empty data.")
-        return None
+        return
 
     course_id = str(data.get("id"))
     name = data.get("name", "")
     code = data.get("course_code", "")
     term = str(data.get("enrollment_term_id") or term_id)
 
-    if not course_id or not name:
+    if not course_id:
         logger.warning(f"Invalid course record: {data}")
-        return None
+        return
 
     course_repo.upsert(course_id, code, name, term)
     logger.info(f"Stored single course {course_id}: {name}")
-    return course_id
+    return
 
 
 def endpoint_course_users(data, course_id=None, **kwargs):
@@ -68,7 +105,7 @@ def endpoint_course_users(data, course_id=None, **kwargs):
     """
     if not data or not course_id:
         logger.warning("endpoint_course_users called with missing data or course_id.")
-        return []
+        return
 
     linked = []
     for user in data:
@@ -79,12 +116,12 @@ def endpoint_course_users(data, course_id=None, **kwargs):
         linked.append(uid)
 
     logger.info(f"Linked {len(linked)} users to course {course_id}")
-    return linked
+    return
 
 def endpoint_course_quizzes(data, course_id=None, **kwargs):
     """Link quizzes to a course."""
     if not data or not course_id:
-        return []
+        return
 
     linked = []
     for quiz in data:
@@ -95,4 +132,4 @@ def endpoint_course_quizzes(data, course_id=None, **kwargs):
         linked.append(qid)
 
     logger.info(f"Linked {len(linked)} quizzes to course {course_id}")
-    return linked
+    return

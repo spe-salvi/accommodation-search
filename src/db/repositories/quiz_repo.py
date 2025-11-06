@@ -37,11 +37,11 @@ class QuizRepository:
             logger.error(f"Error linking quiz {quiz_id} to course {course_id}: {e}")
 
     def get_quiz(self, quiz_id):
-        cur = self.conn.execute("SELECT * FROM quiz_store WHERE quiz_id = ?", (quiz_id,))
+        cur = self.conn.execute("SELECT * FROM quiz_store WHERE quiz_id = ?", (str(quiz_id),))
         return cur.fetchone()
 
     def get_quizzes_by_course(self, course_id):
-        cur = self.conn.execute("SELECT * FROM quiz_store WHERE course_id = ?", (course_id,))
+        cur = self.conn.execute("SELECT * FROM quiz_store WHERE course_id = ?", (str(course_id),))
         return [dict(row) for row in cur.fetchall()]
 
     def list_all(self):

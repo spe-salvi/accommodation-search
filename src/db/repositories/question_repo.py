@@ -27,14 +27,14 @@ class QuestionRepository:
     def get_questions_for_quiz(self, course_id, quiz_id):
         cur = self.conn.execute(
             "SELECT * FROM question_store WHERE course_id = ? AND quiz_id = ?",
-            (course_id, quiz_id)
+            (str(course_id), str(quiz_id))
         )
         return [dict(row) for row in cur.fetchall()]
 
     def get_essay_questions(self, course_id, quiz_id):
         cur = self.conn.execute(
             "SELECT * FROM question_store WHERE course_id = ? AND quiz_id = ? AND question_type = 'essay'",
-            (course_id, quiz_id)
+            (str(course_id), str(quiz_id))
         )
         return [dict(row) for row in cur.fetchall()]
 
@@ -45,3 +45,7 @@ class QuestionRepository:
         """, (course_id, quiz_id, item_id))
         row = cur.fetchone()
         return bool(row["spell_check"]) if row else False
+
+    def list_all(self):
+        cur = self.conn.execute("SELECT * FROM question_store")
+        return [dict(row) for row in cur.fetchall()]

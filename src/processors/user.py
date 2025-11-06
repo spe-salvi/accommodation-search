@@ -1,84 +1,69 @@
-import asyncio
-from utils.retry_request import retry_get
-import config as config
+from db.repositories.user_repo import UserRepository
+from db.repositories.course_repo import CourseRepository
 import logging
 
 logger = logging.getLogger(__name__)
+user_repo = UserRepository()
+course_repo = CourseRepository()
 
-'''
-
-NONE
-
-'''
-async def get_user_ids_by_search(term_id: str, student_search_term: str) -> list[str]:
-    """Return user IDs matching the search term."""
-    def fetch():
-        url = f"{config.API_URL}/v1{config.FUS_ACCOUNT}/users"
-        '''
-        None
-        '''
-        params = {
-            'search_term': student_search_term
-        }
-        if term_id:
-            params['enrollment_term_id'] = term_id
-        data = retry_get(url, params)
-        user_ids = [str(u["id"]) for u in data if "id" in u]
-        logger.info(f"Found {len(user_ids)} user(s) for search '{student_search_term}'")
-        return user_ids
-
-    return await asyncio.get_running_loop().run_in_executor(None, fetch)
-
-'''
-
-NONE
-
-'''
-async def get_user_ids_by_courses(course_ids: list[str]) -> list[str]:
-    """Return all unique user IDs enrolled in the provided courses."""
-    if not course_ids:
-        logger.info("No course IDs provided; returning empty list")
+def get_user_ids_by_search(term_id, user_input):
+    """
+    Return user_ids matching partial name, SIS ID, or email.
+    Optionally filter by courses in the given term.
+    """
+    if not user_input:
         return []
 
-    async def fetch_users(cid):
-        def fetch():
-            url = f"{config.API_URL}/v1/courses/{cid}/users"
-            '''
-            None
-            '''
-            data = retry_get(url, {})
-            return [str(u["id"]) for u in data if "id" in u]
-        return await asyncio.get_running_loop().run_in_executor(None, fetch)
+    matches = []
+    users = user_repo.list_all()
+    user_input = user_input.lower()
 
-    results = await asyncio.gather(*(fetch_users(cid) for cid in course_ids))
-    user_ids = list({uid for sub in results for uid in sub})
-    logger.info(f"Fetched {len(user_ids)} unique user(s) from {len(course_ids)} course(s)")
-    return user_ids
+    for u in users:
+        if (user_input in str(u.get("name", "")).lower()
+            or user_input in str(u.get("sis_id", "")).lower()
+            or user_input in str(u.get("email", "")).lower()):
+            matches.append(u["user_id"])
 
-### Make user cache
-# user_cache = {user_id: {'name': sortable_name, 'sis_id': sis_user_id, 'email': email, 'courses': (course_id, course_id, course_id)}, ...}
+    if not term_id:
+        return matches
+
+    # filter by users who are in that term’s courses
+    course_ids = [c["course_id"] for c in course_repo.list_all() if c.get("term_id") == str(term_id)]
+    term_user_ids = {u["user_id"] for cid in course_ids for u in user_repo.get_users_by_course(cid)}
+
+    filtered = [u for u in matches if u in term_user_ids]
+    logger.info(f"User search '{user_input}' matched {len(filtered)} users in term {term_id}")
+    return filtered
+
+def get_user_ids_by_courses(course_ids):
+    """
+    Return all users across provided courses.
+    """
+    results = set()
+    for cid in course_ids:
+        for u in user_repo.get_users_by_course(cid):
+            results.add(u["user_id"])
+    return list(results)
+
+
 def endpoint_enrollments(data=None, term_id=None, course_id=None, quiz_id=None, user_id=None):
-    # logger.info("endpoint_enrollments called")
-
+    """
+    Process enrollment data for a user and persist user info + user-course links.
+    """
     if not data or not user_id:
-        # logger.error("endpoint_enrollments: Invalid input provided; skipping user cache update.")
+        logger.warning("endpoint_enrollments called with missing data or user_id.")
         return
 
-    with cache_lock:
-        user_cache = cache_manager.load_user_cache()
-        uid = str(user_id)
+    uid = str(user_id)
+    enrollments = data if isinstance(data, list) else [data]
 
-        u_cache = user_cache.setdefault(uid, {})
-        for key, default in [("sortable_name", ""), ("sis_id", ""), ("email", ""), ("courses", [])]:
-            u_cache.setdefault(key, default)
+    for enrollment in enrollments:
+        user_repo.upsert(uid)
 
-        enrollments = data if isinstance(data, list) else [data]
-        for enrollment in enrollments:
-            cid = str(enrollment.get('course_id', ''))
-            if cid and cid not in u_cache["courses"]:
-                u_cache["courses"].append(cid)
+        # Link user to their enrolled course
+        cid = str(enrollment.get("course_id", "")) or str(course_id or "")
+        if cid:
+            user_repo.link_to_course(uid, cid)
 
-        user_cache[uid] = u_cache
-        cache_manager.save_user_cache()
-
-    # logger.info(f"User cache after enrollments endpoint: {len(user_cache)} users")
+    logger.info(f"Processed enrollments for user {uid} ({len(enrollments)} course(s)).")
+    return
