@@ -1,6 +1,3 @@
-# _IN PROGRESS_
-## Inputs are currently hard-coded for testing
-
 # Canvas Accommodations Reporting
 
 _This project provides tools for reporting student accommodations on Canvas quizzes. It supports both manual and batch processing._
@@ -30,7 +27,25 @@ _Automate the process of managing quiz accommodations (extra time or attempts) i
 
 - Languages: Python
 - Software: Excel, Canvas LMS
-- Libraries: pandas, asyncio & threading, SQLite, requests
+
+## 📁 File Overview
+
+<details>
+<summary>Click to expand</summary>
+
+- `main.py` – Main entry point for running reports
+- `thread_search.py` – Threaded batch processing logic
+- `classic_quiz.py` – Classic Canvas quiz API utilities
+- `new_quiz.py` - New Canvas quiz API utilities
+- `get_courses.py` – Fetches course data
+- `get_enrollments.py` – Fetches enrollment data
+- `get_student.py` – Fetches student data
+- `take_input.py` – Handles user input
+- `gui_input.py` – GUI input form
+- `paginate.py` – Handles paginated API requests
+- `config.py` – Configuration and API tokens
+
+</details>
 
 ---
 
@@ -93,24 +108,50 @@ Debugged spell check:
   - Fixed control flow, merging, and filters
 
 Added handling of string input:
-- GUI fields update
-- Process data: to lowercase, fuzzy
-- Term search using dict
+- GUI fields update                             x
+- Process data: to lowercase, fuzzy             x
+- Term search using dict                        x
 - Course search with SIS ID, name, course code  
 - Student search with SIS ID, login ID, name
 - Quiz search with name
 - Fetch endpoints (order of operations) for each
 - Handle multiple user/quiz/course results
 
-Decided to shift cache system to an SQLite backing
-- Influenced by partial updates and gets
+---
 
+## 6. Usage Instructions
+
+### Requirements
+
+Install dependencies:
+
+```
+pip install -r requirements.txt
+
+```
+
+---
+
+### ⚙️ Setup
+
+1. Copy your Canvas API access tokens into an `.env` file
+2. Place any input Excel files in the `inputs/` directory, an example file is provided
+
+---
+
+### Usage
+
+- Run main.py and enter search parameters/file in GUI
+
+## 7. Lessons Learned
 
 <details>
 <summary>Future Features</summary>
 
-- Expiry time for DB entries
-- Clear option for tables
+- Search for split tests
+- Search for spelling assistance
+- Thread pooling for greater efficiency
+- Search by terms instead of codes
 - Simplicity report upload for confirmation search
 - PUT/POST accommodations
 
