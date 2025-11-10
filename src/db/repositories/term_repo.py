@@ -42,6 +42,6 @@ class TermRepository:
         cur = self.conn.execute("SELECT course_id FROM term_courses WHERE term_id = ?", (str(term_id),))
         return [row['course_id'] for row in cur.fetchall()]
 
-    def list_terms(self):
+    def list_all(self):
         cur = self.conn.execute("SELECT term_id, name FROM term_store ORDER BY name")
         return [dict(row) for row in cur.fetchall()]

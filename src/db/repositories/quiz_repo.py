@@ -45,5 +45,5 @@ class QuizRepository:
         return [dict(row) for row in cur.fetchall()]
 
     def list_all(self):
-        cur = self.conn.execute("SELECT quiz_id, title, type, course_id FROM quiz_store ORDER BY title")
+        cur = self.conn.execute("SELECT quiz_id, title, time_limit, acc_type, course_id FROM quiz_store ORDER BY title")
         return [dict(row) for row in cur.fetchall()]

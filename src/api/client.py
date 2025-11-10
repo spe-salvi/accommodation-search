@@ -1,10 +1,10 @@
 import config as config
-from processors.term import *
-from processors.course import *
-from processors.user import *
-from processors.submission import *
-from processors.quiz import *
-from processors.question import *
+from api.endpoints.term_endpoints import *
+from api.endpoints.course_endpoints import *
+from api.endpoints.user_endpoints import *
+from api.endpoints.submission_endpoints import *
+from api.endpoints.quiz_endpoints import *
+from api.endpoints.question_endpoints import *
 import utils.retry_request as retry_request
 import logging
 
@@ -16,7 +16,7 @@ function_dict = {
     'courses': endpoint_courses,
     'course': endpoint_course,
     'course_users': endpoint_course_users,
-    'users': endpoint_course_users,
+    'users': endpoint_users,
     'c_quizzes': endpoint_course_quizzes,
     'n_quizzes': endpoint_course_quizzes,
     'c_quiz': endpoint_quiz,

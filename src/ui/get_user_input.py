@@ -100,7 +100,7 @@ def create_input_form():
 
 
     def on_generate():
-        print(generate_report(entry_vars))
+        generate_report(entry_vars)
         root.destroy()
 
     ttk.Button(bottom_bar, text="Generate Report", command=on_generate).grid(

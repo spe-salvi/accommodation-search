@@ -21,11 +21,17 @@ def retry_get(url, params):
 
         try:
             data = paginatedGet(url, config.HEADERS, params)
+            print(f'DATA: {data}')
+                        # Normalize single object to list
+            if isinstance(data, dict):
+                data = [data]
+            # Handle Canvas "empty" responses gracefully
+            if not isinstance(data, list):
+                logger.warning(f"Unexpected data type {type(data)} from {url}: {data}")
+                return []
+            logger.info(f"Success - received {len(data)} items")
             if data:
-                logger.info(f"Success - received {len(data)} items")
-                logger.debug(f"First item preview: {str(data[0])[:200] if data else 'No data'}")
-            else:
-                logger.warning("Received empty response")
+                logger.debug(f"First item preview: {str(data[0])[:200]}")
             break
         except Exception as e:
             retry_count += 1

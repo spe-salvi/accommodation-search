@@ -1,4 +1,4 @@
-from processors.submission import is_accommodated
+from api.endpoints.submission_endpoints import is_accommodated
 import fetch.fetch_dfs as fetch_dfs
 import pandas as pd
 import logging

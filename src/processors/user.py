@@ -1,69 +1,83 @@
+import logging
+from api.client import get_data
 from db.repositories.user_repo import UserRepository
 from db.repositories.course_repo import CourseRepository
-import logging
 
 logger = logging.getLogger(__name__)
 user_repo = UserRepository()
 course_repo = CourseRepository()
 
-def get_user_ids_by_search(term_id, user_input):
+
+def get_user_ids_by_search(term_id: str, user_input: str):
     """
-    Return user_ids matching partial name, SIS ID, or email.
-    Optionally filter by courses in the given term.
+    Fetch user IDs matching a partial name, SIS ID, or email.
+    Always calls the Canvas API first to normalize results,
+    writes to SQLite, then filters locally (and by term if provided).
     """
     if not user_input:
         return []
 
-    matches = []
+    logger.info(f"Fetching Canvas users for search='{user_input}', term={term_id or 'none'}")
+
+    # 1. Always call Canvas API for this user search
+    get_data('users', term_id=term_id, search_param=user_input)
+
+    # 2. Read back from DB
     users = user_repo.list_all()
     user_input = user_input.lower()
-
-    for u in users:
-        if (user_input in str(u.get("name", "")).lower()
-            or user_input in str(u.get("sis_id", "")).lower()
-            or user_input in str(u.get("email", "")).lower()):
-            matches.append(u["user_id"])
+    matches = [
+        u["user_id"] for u in users
+        if user_input in str(u.get("name", "")).lower()
+        or user_input in str(u.get("sis_id", "")).lower()
+        or user_input in str(u.get("email", "")).lower()
+    ]
 
     if not term_id:
+        logger.info(f"Resolved {len(matches)} user(s) for search '{user_input}' (no term filter).")
         return matches
 
-    # filter by users who are in that term’s courses
-    course_ids = [c["course_id"] for c in course_repo.list_all() if c.get("term_id") == str(term_id)]
-    term_user_ids = {u["user_id"] for cid in course_ids for u in user_repo.get_users_by_course(cid)}
+    # 3. Filter by users enrolled in this term’s courses
+    course_ids = [
+        c["course_id"]
+        for c in course_repo.list_all()
+        if str(c.get("term_id")) == str(term_id)
+    ]
+
+    term_user_ids = {
+        u["user_id"]
+        for cid in course_ids
+        for u in user_repo.get_users_by_course(cid)
+    }
 
     filtered = [u for u in matches if u in term_user_ids]
-    logger.info(f"User search '{user_input}' matched {len(filtered)} users in term {term_id}")
+    logger.info(f"Resolved {len(filtered)} user(s) in term {term_id} for search '{user_input}'.")
+
+    if not term_user_ids:
+        logger.info("No term-user links found; returning all user matches.")
+        print(f'MATCHES: {matches[0]}')
+        return matches
+        
+    print(f'FILTERED: {filtered}')
     return filtered
+
 
 def get_user_ids_by_courses(course_ids):
     """
-    Return all users across provided courses.
+    Return all user IDs across provided course IDs.
+    Calls Canvas API to fetch course users (if not cached),
+    writes results to SQLite, and returns canonical user_ids.
     """
     results = set()
+
     for cid in course_ids:
+        logger.info(f"Fetching Canvas users for course {cid}")
+        get_data('course_users', course_id=cid)  # API fetch + DB write
+
+        # Pull from DB after update
         for u in user_repo.get_users_by_course(cid):
             results.add(u["user_id"])
+
+    logger.info(f"Resolved {len(results)} unique user(s) across {len(course_ids)} courses.")
+
+    print(f'USERS BY COURSES: {list(results)}')
     return list(results)
-
-
-def endpoint_enrollments(data=None, term_id=None, course_id=None, quiz_id=None, user_id=None):
-    """
-    Process enrollment data for a user and persist user info + user-course links.
-    """
-    if not data or not user_id:
-        logger.warning("endpoint_enrollments called with missing data or user_id.")
-        return
-
-    uid = str(user_id)
-    enrollments = data if isinstance(data, list) else [data]
-
-    for enrollment in enrollments:
-        user_repo.upsert(uid)
-
-        # Link user to their enrolled course
-        cid = str(enrollment.get("course_id", "")) or str(course_id or "")
-        if cid:
-            user_repo.link_to_course(uid, cid)
-
-    logger.info(f"Processed enrollments for user {uid} ({len(enrollments)} course(s)).")
-    return

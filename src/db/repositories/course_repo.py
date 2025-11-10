@@ -53,6 +53,6 @@ class CourseRepository:
         cur = self.conn.execute("SELECT quiz_id FROM course_quizzes WHERE course_id = ?", (str(course_id),))
         return [row["quiz_id"] for row in cur.fetchall()]
 
-    def list_courses(self):
+    def list_all(self):
         cur = self.conn.execute("SELECT course_id, code, name, term_id FROM course_store ORDER BY name")
         return [dict(row) for row in cur.fetchall()]

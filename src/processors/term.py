@@ -25,49 +25,7 @@ def get_term_id(term_name: str) -> str | None:
     norm = re.sub(r"\s+", " ", term_name.strip().lower())
     term_id = lookup.get(norm)
     logger.info(f"Resolved '{term_name}' → term_id={term_id}")
+
+    print(f'Term Input: {term_id}')
+
     return str(term_id) if term_id else None
-
-
-def endpoint_term(data, term_id=None, **kwargs):
-    """
-    Processes a term API response and persists it in SQLite.
-    Expected data shape: { 'id': 116, 'name': 'Fall 2025', ... }
-    """
-    if not data:
-        logger.warning("endpoint_term called with empty data.")
-        return
-    
-    if not term_id:
-        if 'id' not in data:
-            logging.error(f"endpoint_term: The 'id' key is missing in the provided data. {term_id}")
-            return
-        term_id = str(data.get('id'))
-
-    name = data.get('name', '')
-
-    if not term_id or not name:
-        logger.warning("Invalid term data, missing id or name.")
-        return
-
-    term_repo.upsert(term_id, name)
-    logger.info(f"Persisted term {term_id}: {name}")
-    return
-
-
-def endpoint_courses(data, term_id=None, **kwargs):
-    """Link courses to a term."""
-    if not data:
-        logger.info("No course data to link.")
-        return []
-
-    linked_ids = []
-    for course in data:
-        cid = str(course.get("id"))
-        tid = str(course.get("enrollment_term_id"))
-        if not cid or not tid:
-            continue
-        term_repo.link_course(tid, cid)
-        linked_ids.append(cid)
-
-    logger.info(f"Linked {len(linked_ids)} courses to term {term_id or tid}")
-    return

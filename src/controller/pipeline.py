@@ -71,15 +71,18 @@ async def compute_course_candidates(ctx):
     tasks = []
     # If user_ids are present, get their enrolled courses
     if ctx.user_ids:
+        print('COURSE IDS BY USERS')
         logger.info("compute_course_candidates: scheduling user enrollments fetch")
         tasks.append(course_processor.get_course_ids_by_users(ctx.user_ids, ctx.term_id))
 
     # If a course search string exists, search courses in term (or global if term missing)
     if ctx.course_input and ctx.course_input.strip():
+        print("COURSE IDS BY TERM/SEARCH")
         tasks.append(course_processor.get_course_ids_by_term_and_search(ctx.term_id or "", ctx.course_input))
 
     # If no other filters but term is present, get all courses in term
     if not tasks and ctx.term_id:
+        print('COURSE IFS BY TERM')
         tasks.append(course_processor.get_course_ids_by_term_and_search(ctx.term_id, ""))
 
     if not tasks:
@@ -88,9 +91,10 @@ async def compute_course_candidates(ctx):
 
     logger.info(f"compute_course_candidates: running {len(tasks)} source task(s)")
     results = await asyncio.gather(*tasks)
+    flat_results = flatten_list(results)
+    lists = [set(flat_results)]
 
-    # Flatten results; results correspond in order to tasks
-    lists = [set(r or []) for r in results]
+    print(f'Courses Input: {lists}')
 
     # If we have multiple sources (e.g., user enrollments + course search), intersect them to narrow
     if len(lists) >= 2:
@@ -113,20 +117,25 @@ async def compute_user_candidates(ctx):
     """
     tasks = []
     if ctx.user_input:
+        print('USER IDS BY SEARCH')
         tasks.append(user_processor.get_user_ids_by_search(ctx.term_id, ctx.user_input))
 
     if ctx.course_ids:
+        print('USER IDS BY COURSES')
         tasks.append(user_processor.get_user_ids_by_courses(ctx.course_ids))
 
     if not tasks:
         return []
 
     results = await asyncio.gather(*tasks)
-    lists = [set(r or []) for r in results]
+    flat_results = flatten_list(results)
+    unique_ids = list(set(flat_results))
 
-    if len(lists) >= 2:
-        return list(set.intersection(*lists))
-    return list(lists[0])
+    if len(results) >= 2:
+        intersection = set.intersection(*(set(flatten_list(r)) for r in results if r))
+        return list(intersection)
+
+    return unique_ids
 
 
 # -----------------------------
@@ -163,12 +172,18 @@ async def resolve_node(ctx, node):
     logger.info(f"Context state: term_id={ctx.term_id}, user_ids={ctx.user_ids}, course_ids={ctx.course_ids}")
     logger.info(f"Input state: term_input={ctx.term_input}, course_input={repr(ctx.course_input)}, user_input={ctx.user_input}")
     
-    rules = STRATEGIES.get(node, [])
+    rules = STRATEGIES.get(node, '')
     result = await resolve_by_priority(ctx, *rules)
-    setattr(ctx, node, result or [])
+
+    if isinstance(result, list):
+        result = flatten_list(result)
+
+    print(f'RESULT: {result}')
+    
+    setattr(ctx, node, result or '')
     
     logger.info(f"Node '{node}' resolution complete. Result: {getattr(ctx, node)}")
-    return ctx
+    return getattr(ctx, node)
 
 # Convenience wrappers for DAG
 async def get_term_id(ctx):   return await resolve_node(ctx, "term_id")
@@ -230,11 +245,17 @@ async def resolve_dependencies(ctx, targets=("quiz_ids",)):
             return_exceptions=True
         )
 
+
+
         for node, result in zip(runnable, results):
             if isinstance(result, Exception):
                 logger.error(f"Node {node} raised: {result}")
-            else:
-                logger.debug(f"Node {node} completed successfully")
+                continue
+            if isinstance(result, list):
+                result = flatten_list(result)
+
+            setattr(ctx, node, result or [])
+            logger.debug(f"Node {node} completed successfully with {len(result) if isinstance(result, list) else 1} result(s)")
 
     logger.info(f"DAG resolved. Completed nodes: {sorted(completed)}")
     return ctx
@@ -257,3 +278,12 @@ async def build_accommodation_context(
     )
     await resolve_dependencies(ctx, targets=["quiz_ids"])
     return ctx
+
+def flatten_list(seq):
+    out = []
+    for x in seq:
+        if isinstance(x, list):
+            out.extend(flatten_list(x))
+        elif x is not None:
+            out.append(x)
+    return out

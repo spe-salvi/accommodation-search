@@ -1,74 +1,46 @@
 import logging
-import asyncio
-from utils.retry_request import retry_get
-import config as config
+from api.client import get_data
 from db.repositories.quiz_repo import QuizRepository
+from db.repositories.course_repo import CourseRepository
 
 logger = logging.getLogger(__name__)
 quiz_repo = QuizRepository()
+course_repo = CourseRepository()
+
 
 async def get_quiz_ids_from_courses(course_ids: list[str], quiz_name: str, quiz_type="both") -> list[str]:
     """
-    Return quiz IDs that match quiz_name across multiple courses,
-    and persist them in the quiz_store.
+    Fetch quiz IDs matching quiz_name across the given courses.
+    Always calls Canvas via get_data(), writes to SQLite through endpoint_quiz,
+    and returns canonical quiz_ids from the local DB.
+
+    quiz_type: "classic", "new", or "both"
     """
-    if not quiz_name or not course_ids:
-        logger.info("Missing quiz name or course IDs; returning empty list")
+    if not course_ids:
+        logger.info("No course IDs provided; returning empty list.")
         return []
 
-    async def fetch_quizzes(cid):
-        def fetch():
-            quiz_ids = []
-            quiz_name_norm = quiz_name.strip().lower()
-            urls = []
+    quiz_ids = set()
+    quiz_name_lower = (quiz_name or "").strip().lower()
 
-            if quiz_type in ("classic", "both"):
-                urls.append(f"{config.API_URL}/v1/courses/{cid}/quizzes?search_term={quiz_name}")
+    for cid in course_ids:
+        logger.info(f"Fetching quizzes for course {cid} (type={quiz_type})")
 
-            if quiz_type in ("new", "both"):
-                urls.append(f"{config.API_URL}/v1/courses/{cid}/assignments?search_term={quiz_name}")
+        # 1️⃣ Always hit Canvas to populate/update DB for this course
+        if quiz_type in ("classic", "both"):
+            get_data("c_quizzes", course_id=cid, search_param=quiz_name)
+        if quiz_type in ("new", "both"):
+            get_data("n_quizzes", course_id=cid, search_param=quiz_name)
 
-            for url in urls:
-                data = retry_get(url, {})
-                for q in data:
-                    name = q.get("name", "").strip().lower()
-                    submission_types = q.get("submission_types", [])
-                    is_new = "assignments" in url
+        # 2️⃣ Read back from the DB
+        quizzes = quiz_repo.list_all()
+        for q in quizzes:
+            if str(q.get("course_id")) != str(cid):
+                continue
+            title = str(q.get("title", "")).lower()
+            if quiz_name_lower in title or not quiz_name_lower:
+                quiz_ids.add(q["quiz_id"])
+                quiz_repo.link_to_course(cid, q["quiz_id"])
 
-                    if quiz_name_norm in name and (
-                        not is_new or ("external_tool" in submission_types or "online_quiz" in submission_types)
-                    ):
-                        quiz_id = str(q.get("id"))
-                        qtype = "new" if is_new else "classic"
-                        quiz_repo.upsert(quiz_id, q.get("name", ""), qtype, str(cid))
-                        quiz_repo.link_to_course(str(cid), quiz_id)
-                        quiz_ids.append(quiz_id)
-
-            if quiz_ids:
-                logger.info(f"Course {cid}: found {len(quiz_ids)} quiz(es) for '{quiz_name}'")
-            return quiz_ids
-
-        return await asyncio.get_running_loop().run_in_executor(None, fetch)
-
-    results = await asyncio.gather(*(fetch_quizzes(cid) for cid in course_ids))
-    quiz_ids = list({qid for sub in results for qid in sub})
-    logger.info(f"Resolved {len(quiz_ids)} total quizzes named '{quiz_name}'")
-    return quiz_ids
-
-
-def endpoint_quiz(data, term_id=None, course_id=None, quiz_id=None, user_id=None, acc_type=''):
-    """
-    Processes a single quiz response and saves it to the database.
-    """
-    if not data or not course_id or not quiz_id:
-        logger.warning("endpoint_quiz: Missing required parameters.")
-        return
-
-    title = data.get('title', '')
-    time_limit = data.get('time_limit', '')
-
-    quiz_repo.upsert(str(quiz_id), title, time_limit, acc_type, str(course_id))
-    quiz_repo.link_to_course(str(course_id), str(quiz_id))
-
-    logger.info(f"Stored quiz {quiz_id}: {title} ({acc_type}) in course {course_id}")
-    return
+    logger.info(f"Resolved {len(quiz_ids)} quiz(es) across {len(course_ids)} course(s) for '{quiz_name}'.")
+    return list(quiz_ids)
