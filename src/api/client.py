@@ -34,6 +34,8 @@ def get_data(search_type, **kwargs):
     course_id = kwargs.get("course_id",)
     quiz_id = kwargs.get("quiz_id",)
     user_id = kwargs.get("user_id",)
+    acc_type = kwargs.get('acc_type',)
+    quiz_type = kwargs.get('quiz_type',)
     search_param = kwargs.get("search_param",)
 
     # logger.info(f"get_data called, search_type={search_type}")
@@ -43,20 +45,20 @@ def get_data(search_type, **kwargs):
     params = url_dict[search_type][1]
     # logger.info(f"[get_data] Fetching data from {url} with params {params}")
     data = retry_request.retry_get(url, params)
-    if not data or 'message' in data:
-        # logger.error(f"[get_data] Error fetching data: {data['message']}")
+    if not data or (isinstance(data, list) and len(data) == 0) or (isinstance(data, dict) and "errors" in data):
+        logger.info(f"[get_data] Skipping {search_type} — no usable data.")
         return
     function = function_dict[search_type]
     try:
         if search_type == 'c_quiz':
             # logger.info(f"Calling function {function.__name__}")
-            ret_vals = function(data, term_id=term_id, course_id=course_id, quiz_id=quiz_id, user_id=user_id, acc_type='classic')
+            ret_vals = function(data, term_id=term_id, course_id=course_id, quiz_id=quiz_id, user_id=user_id, acc_type=acc_type, quiz_type='classic')
         elif search_type == 'n_quiz':
             # logger.info(f"Calling function {function.__name__}")
-            ret_vals = function(data, term_id=term_id, course_id=course_id, quiz_id=quiz_id, user_id=user_id, acc_type='new')
+            ret_vals = function(data, term_id=term_id, course_id=course_id, quiz_id=quiz_id, user_id=user_id, acc_type=acc_type, quiz_type='new')
         else:
             # logger.info(f"Calling function {function.__name__}")
-            ret_vals = function(data, term_id=term_id, course_id=course_id, quiz_id=quiz_id, user_id=user_id)
+            ret_vals = function(data, term_id=term_id, course_id=course_id, quiz_id=quiz_id, user_id=user_id, acc_type=acc_type, quiz_type=quiz_type)
         # logger.info(f"[get_data] Finished processing for search_type={search_type}")
         return ret_vals
     except Exception as e:

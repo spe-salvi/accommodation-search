@@ -1,11 +1,10 @@
 import re
 import logging
 import config as config
-from db.repositories.term_repo import TermRepository
+from api.endpoints.term_endpoints import term_repo
 
 logger = logging.getLogger(__name__)
 
-term_repo = TermRepository()
 
 def get_term_id(term_name: str) -> str | None:
     """Convert a user-friendly term name (e.g. 'Fall 2025') into a Canvas term ID."""

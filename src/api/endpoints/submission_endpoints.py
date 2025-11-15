@@ -4,10 +4,13 @@ from db.repositories.submission_repo import SubmissionRepository
 logger = logging.getLogger(__name__)
 repo = SubmissionRepository()
 
-def endpoint_submissions(data, term_id=None, course_id=None, quiz_id=None, user_id=None):
+def endpoint_submissions(data, **kwargs):
     """
     Store all submissions for a given quiz into the database.
     """
+    course_id = kwargs.get('course_id')
+    quiz_id = kwargs.get('quiz_id')
+
     if not data or not course_id or not quiz_id:
         logger.warning("endpoint_submissions called with missing course_id or quiz_id.")
         return

@@ -33,7 +33,7 @@ def generate_report(entry_vars):
         # quiz_type = quiz_type_var.get()
         # date_filter = date_filter_var.get()
 
-        term_name = 'Fall 2025'
+        term_name = None#'Fall 2025'
         course_search = 'THE-115-OL-A'#'MTH-156-OL-A'
         quiz_name = 'Decalogue'#'Exam #2'
         student_search = '2635745'
@@ -41,6 +41,11 @@ def generate_report(entry_vars):
         quiz_type = 'both'#'new'
         date_filter = 'both'
         # clear_cache = True
+
+        #No term -> good, course not limited by user
+        #No quiz -> good
+        #No course -> no course, no quiz
+        #No user -> no user
 
         input_data = [
             term_name,
@@ -79,20 +84,20 @@ def populate_db(input):
             get_data('course_users', course_id=course_id)
             get_data('c_quizzes', course_id=course_id, search_param=None)
             get_data('n_quizzes', course_id=course_id, search_param=None)
-            # if input[3]:
-            #     for user_id in input[3]:
-            #         get_data('enrollments', user_id=user_id, term_id=input[0])
-            # else:
-            #     print('No users')
-    #         if input[2]:
-    #             for quiz_id in input[2]:
-    #                 get_data('c_quiz', course_id=course_id, quiz_id=quiz_id)
-    #                 get_data('n_quiz', course_id=course_id, quiz_id=quiz_id)
-    #                 get_data('c_quiz_submissions', course_id=course_id, quiz_id=quiz_id)
-    #                 get_data('n_quiz_submissions', course_id=course_id, quiz_id=quiz_id)
-    #                 get_data('n_quiz_items', course_id=course_id, quiz_id=quiz_id)
-    #         else:
-    #             print('No quizzes')
+            if input[3]:
+                for user_id in input[3]:
+                    get_data('enrollments', user_id=user_id, term_id=input[0])
+            else:
+                print('No users')
+            if input[2]:
+                for quiz_id in input[2]:
+                    get_data('c_quiz', course_id=course_id, quiz_id=quiz_id)
+                    get_data('n_quiz', course_id=course_id, quiz_id=quiz_id)
+                    get_data('c_quiz_submissions', course_id=course_id, quiz_id=quiz_id)
+                    get_data('n_quiz_submissions', course_id=course_id, quiz_id=quiz_id)
+                    get_data('n_quiz_items', course_id=course_id, quiz_id=quiz_id)
+            else:
+                print('No quizzes')
     else:
         print('No courses')
 
@@ -100,21 +105,21 @@ def populate_db(input):
 def get_db():
     term_db = TermRepository()
     course_db = CourseRepository()
-    # user_db = UserRepository()
-    # quiz_db = QuizRepository()
+    user_db = UserRepository()
+    quiz_db = QuizRepository()
     # submission_db = SubmissionRepository()
     # question_db = QuestionRepository()
 
     term_data = term_db.list_all()
     course_data = course_db.list_all()
-    # user_data = user_db.list_all()
-    # quiz_data = quiz_db.list_all()
+    user_data = user_db.list_all()
+    quiz_data = quiz_db.list_all()
     # submission_data = submission_db.list_all()
     # question_data = question_db.list_all()
 
     print(f'TERM DATA: {term_data}')
     print(f'COURSE DATA: {course_data}')
-    # print(f'USER DATA: {user_data}')
-    # print(f'QUIZ DATA: {quiz_data}')
+    print(f'USER DATA: {user_data}')
+    print(f'QUIZ DATA: {quiz_data}')
     # print(f'SUBMISSION DATA: {submission_data}')
     # print(f'QUESTION DATA: {question_data}')

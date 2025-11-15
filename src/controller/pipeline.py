@@ -50,6 +50,7 @@ async def resolve_by_priority(ctx, *rules):
             if asyncio.iscoroutine(result):
                 result = await result
             if result:
+                print(f'Resolve By Priority: {result}')
                 return result
     return []
 
@@ -66,32 +67,43 @@ async def compute_course_candidates(ctx):
     - If term_id provided and no other filters, fetch all courses in term
     - Combine: when both user enrollments and course search exist, intersect them; otherwise union
     """
-    candidates = []
-
     tasks = []
     # If user_ids are present, get their enrolled courses
     if ctx.user_ids:
         print('COURSE IDS BY USERS')
         logger.info("compute_course_candidates: scheduling user enrollments fetch")
         tasks.append(course_processor.get_course_ids_by_users(ctx.user_ids, ctx.term_id))
+        print(f'Course Candidates TASKS: {tasks}')
+
 
     # If a course search string exists, search courses in term (or global if term missing)
     if ctx.course_input and ctx.course_input.strip():
         print("COURSE IDS BY TERM/SEARCH")
         tasks.append(course_processor.get_course_ids_by_term_and_search(ctx.term_id or "", ctx.course_input))
+        print(f'Course Candidates TASKS 2: {tasks}')
+
 
     # If no other filters but term is present, get all courses in term
     if not tasks and ctx.term_id:
         print('COURSE IFS BY TERM')
         tasks.append(course_processor.get_course_ids_by_term_and_search(ctx.term_id, ""))
+        print(f'Course Candidates TASKS 3: {tasks}')
+
 
     if not tasks:
         logger.info("compute_course_candidates: no candidate sources found")
         return []
 
     logger.info(f"compute_course_candidates: running {len(tasks)} source task(s)")
-    results = await asyncio.gather(*tasks)
+    results = []
+    for t in tasks:
+        if asyncio.iscoroutine(t):
+            results.append(await t)
+        else:
+            results.append(t)
+    print(f'Course Candidates Tasks: {results}')
     flat_results = flatten_list(results)
+    print(f'Course Candidates Flattened: {flat_results}')
     lists = [set(flat_results)]
 
     print(f'Courses Input: {lists}')
@@ -99,11 +111,13 @@ async def compute_course_candidates(ctx):
     # If we have multiple sources (e.g., user enrollments + course search), intersect them to narrow
     if len(lists) >= 2:
         intersection = set.intersection(*lists)
+        print(f'Course Intersection: {intersection}')
         logger.info(f"compute_course_candidates: intersection size={len(intersection)}")
         return list(intersection)
 
     # Otherwise return the single candidate source
     logger.info(f"compute_course_candidates: single source size={len(lists[0])}")
+    print(f'Course Candidates Final List: {list(lists[0])}')
     return list(lists[0])
 
 
@@ -119,22 +133,33 @@ async def compute_user_candidates(ctx):
     if ctx.user_input:
         print('USER IDS BY SEARCH')
         tasks.append(user_processor.get_user_ids_by_search(ctx.term_id, ctx.user_input))
+        print(f'User Candidates TASKS: {tasks}')
 
     if ctx.course_ids:
         print('USER IDS BY COURSES')
         tasks.append(user_processor.get_user_ids_by_courses(ctx.course_ids))
+        print(f'User Candidates TASKS 2: {tasks}')
+
 
     if not tasks:
         return []
 
-    results = await asyncio.gather(*tasks)
+    results = []
+    for t in tasks:
+        if asyncio.iscoroutine(t):
+            results.append(await t)
+        else:
+            results.append(t)
+    print(f'User Candidates Tasks: {results}')
     flat_results = flatten_list(results)
     unique_ids = list(set(flat_results))
 
     if len(results) >= 2:
         intersection = set.intersection(*(set(flatten_list(r)) for r in results if r))
+        print(f'User Candidates Intersection: {intersection}')
         return list(intersection)
 
+    print(f'User Candidates Final: {unique_ids}')
     return unique_ids
 
 
@@ -175,14 +200,18 @@ async def resolve_node(ctx, node):
     rules = STRATEGIES.get(node, '')
     result = await resolve_by_priority(ctx, *rules)
 
+    print(f'Resolve Node Returned: {result}')
+
     if isinstance(result, list):
         result = flatten_list(result)
 
-    print(f'RESULT: {result}')
+    print(f'Resolve Node Flattened?: {result}')
     
     setattr(ctx, node, result or '')
     
     logger.info(f"Node '{node}' resolution complete. Result: {getattr(ctx, node)}")
+    print(f'Resolve Node CTX: {ctx}')
+    print(f'Resolve Node NODE: {node}')
     return getattr(ctx, node)
 
 # Convenience wrappers for DAG
@@ -205,60 +234,87 @@ PIPELINE = {
 # DAG resolver (unchanged)
 # -----------------------------
 async def resolve_dependencies(ctx, targets=("quiz_ids",)):
-    completed = set()
+    """
+    Resolve DAG nodes using a fixpoint / convergence loop.
 
-    def can_run(node):
+    - Respects dependency order from PIPELINE (which is already topological).
+    - Runs multiple rounds until no node changes the context or max rounds hit.
+    - Optional deps (like 'term_id?') are treated as "use it if present, but
+      don't block execution if it's missing".
+    """
+    max_rounds = len(PIPELINE) * 3  # safety cap to avoid any weird infinite loops
+
+    def deps_satisfied(node: str) -> bool:
         deps = PIPELINE[node]["deps"]
         for dep in deps:
             optional = dep.endswith("?")
-            dep = dep.rstrip("?")
+            dep_name = dep.rstrip("?")
 
-            if optional and not ctx.has(dep) and dep not in completed:
+            # For optional deps, we don't require them to be present.
+            if optional:
                 continue
-            if not optional and not ctx.has(dep) and dep not in completed:
+
+            # For required deps, ctx.must have a value.
+            if not ctx.has(dep_name):
                 return False
-        # Special-case: if a user_input was provided we should wait for user_ids to resolve before
-        # attempting to resolve course_ids to avoid falling back to 'all courses in term'.
-        if node == "course_ids" and ctx.user_input and not ctx.has("user_ids"):
-            return False
+
         return True
 
-    while not all(ctx.has(t) or t in completed for t in targets):
-        runnable = [
-            node for node in PIPELINE
-            if node not in completed and can_run(node)
-        ]
+    for round_idx in range(max_rounds):
+        logger.debug(f"resolve_dependencies: round {round_idx + 1}")
+        progress = False
 
-        if not runnable:
+        # Iterate in insertion order (already term_id -> user_ids -> course_ids -> quiz_ids)
+        for node, meta in PIPELINE.items():
+            if not deps_satisfied(node):
+                continue
+
+            # Snapshot the "before" value
+            before = getattr(ctx, node, None)
+
+            try:
+                # Node func (e.g. get_term_id, get_user_ids, etc.) is responsible
+                # for updating ctx.<node> internally via resolve_node(...)
+                result = await meta["func"](ctx)
+            except Exception as e:
+                logger.error(f"Node '{node}' raised an exception: {e}")
+                continue
+
+            # Read the "after" value from ctx (trust the node to have set it)
+            after = getattr(ctx, node, None)
+
+            # Normalize lists for comparison to avoid false positives from different list objects
+            if isinstance(before, list):
+                before_norm = flatten_list(before)
+            else:
+                before_norm = before
+
+            if isinstance(after, list):
+                after_norm = flatten_list(after)
+            else:
+                after_norm = after
+
+            if before_norm != after_norm:
+                logger.debug(f"Node '{node}' changed value: {before_norm} -> {after_norm}")
+                progress = True
+
+        # If nothing changed this round, we've converged
+        if not progress:
             unresolved = [t for t in targets if not ctx.has(t)]
-            logger.warning(
-                f"No runnable nodes left — unresolved targets: {unresolved}. "
-                "Continuing gracefully (some data may be missing)."
-            )
+            if unresolved:
+                logger.warning(
+                    f"resolve_dependencies: converged with unresolved targets: {unresolved}. "
+                    f"Some data may be missing."
+                )
             break
 
-        completed.update(runnable)
-        logger.debug(f"Running DAG nodes concurrently: {runnable}")
-
-        results = await asyncio.gather(
-            *(PIPELINE[node]["func"](ctx) for node in runnable),
-            return_exceptions=True
-        )
-
-
-
-        for node, result in zip(runnable, results):
-            if isinstance(result, Exception):
-                logger.error(f"Node {node} raised: {result}")
-                continue
-            if isinstance(result, list):
-                result = flatten_list(result)
-
-            setattr(ctx, node, result or [])
-            logger.debug(f"Node {node} completed successfully with {len(result) if isinstance(result, list) else 1} result(s)")
-
-    logger.info(f"DAG resolved. Completed nodes: {sorted(completed)}")
+    logger.info("DAG resolved.")
+    logger.debug(
+        f"Final context: term_id={ctx.term_id}, "
+        f"course_ids={ctx.course_ids}, user_ids={ctx.user_ids}, quiz_ids={ctx.quiz_ids}"
+    )
     return ctx
+
 
 # -----------------------------
 # Entry point

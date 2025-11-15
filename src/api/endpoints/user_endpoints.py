@@ -7,7 +7,7 @@ user_repo = UserRepository()
 course_repo = CourseRepository()
 
 
-def endpoint_users(data=None, term_id=None, course_id=None, quiz_id=None, user_id=None):
+def endpoint_users(data=None, term_id=None, course_id=None, quiz_id=None, user_id=None, acc_type=None, quiz_type=None):
     if not data:
         logger.warning("endpoint_users called with missing data.")
         return
@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS user_store (
 );
 '''
 
-def endpoint_enrollments(data=None, term_id=None, course_id=None, quiz_id=None, user_id=None):
+def endpoint_enrollments(data=None, term_id=None, course_id=None, quiz_id=None, user_id=None, acc_type=None, quiz_type=None):
     """
     Process enrollment data for a user and persist user info + user-course links.
     """

@@ -38,18 +38,13 @@ CREATE TABLE IF NOT EXISTS user_store (
     email TEXT
 );
 
-CREATE TABLE IF NOT EXISTS user_courses (
-    user_id TEXT,
-    course_id TEXT,
-    PRIMARY KEY (user_id, course_id)
-);
-
 -- QUIZ STORE
 CREATE TABLE IF NOT EXISTS quiz_store (
     quiz_id TEXT PRIMARY KEY,
     title TEXT,
     time_limit TEXT,
     acc_type TEXT,
+    quiz_type TEXT,
     course_id TEXT
 );
 

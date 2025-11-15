@@ -43,10 +43,11 @@ def endpoint_course(data, term_id=None, **kwargs):
         logger.warning("endpoint_course called with empty data.")
         return
 
-    course_id = str(data.get("id"))
-    name = data.get("name", "")
-    code = data.get("course_code", "")
-    term = str(data.get("enrollment_term_id") or term_id)
+    for course in data:
+        course_id = str(course.get("id"))
+        name = course.get("name", "")
+        code = course.get("course_code", "")
+        term = str(course.get("enrollment_term_id") or term_id)
 
     if not course_id:
         logger.warning(f"Invalid course record: {data}")
@@ -83,14 +84,19 @@ def endpoint_course_users(data, course_id=None, **kwargs):
 
 def endpoint_course_quizzes(data, course_id=None, **kwargs):
     """Link quizzes to a course."""
+    print('HIT')
     if not data or not course_id:
+        logger.info(f"No quizzes returned for course {course_id}, keeping existing links.")
         return
+
 
     linked = []
     for quiz in data:
         qid = str(quiz.get("id"))
         if not qid:
             continue
+        print(f"[DEBUG] endpoint_quizzes received {len(data)} quizzes for course {course_id}")
+        print(f"[DEBUG] Processing quiz {quiz.get('id')} - {quiz.get('title')}")
         course_repo.link_quiz(course_id, qid)
         linked.append(qid)
 

@@ -1,11 +1,9 @@
 import logging
 from api.client import get_data
-from db.repositories.user_repo import UserRepository
-from db.repositories.course_repo import CourseRepository
+from api.endpoints.user_endpoints import user_repo
+from api.endpoints.course_endpoints import course_repo
 
 logger = logging.getLogger(__name__)
-user_repo = UserRepository()
-course_repo = CourseRepository()
 
 
 def get_user_ids_by_search(term_id: str, user_input: str):
@@ -34,6 +32,7 @@ def get_user_ids_by_search(term_id: str, user_input: str):
 
     if not term_id:
         logger.info(f"Resolved {len(matches)} user(s) for search '{user_input}' (no term filter).")
+        print(f'User Matches: {matches}')
         return matches
 
     # 3. Filter by users enrolled in this term’s courses
@@ -54,10 +53,10 @@ def get_user_ids_by_search(term_id: str, user_input: str):
 
     if not term_user_ids:
         logger.info("No term-user links found; returning all user matches.")
-        print(f'MATCHES: {matches[0]}')
+        print(f'User Matches (2): {matches}')
         return matches
         
-    print(f'FILTERED: {filtered}')
+    print(f'User Filtered: {filtered}')
     return filtered
 
 
@@ -67,6 +66,7 @@ def get_user_ids_by_courses(course_ids):
     Calls Canvas API to fetch course users (if not cached),
     writes results to SQLite, and returns canonical user_ids.
     """
+    print(f'------------------------------------------------------------------\n get_user_ids_by_courses INPUT: {course_ids}')
     results = set()
 
     for cid in course_ids:
@@ -74,10 +74,12 @@ def get_user_ids_by_courses(course_ids):
         get_data('course_users', course_id=cid)  # API fetch + DB write
 
         # Pull from DB after update
-        for u in user_repo.get_users_by_course(cid):
-            results.add(u["user_id"])
+        print(f'XXXXXXXXXXXXXXXXXXXXX {course_repo.get_users_for_course(cid)} XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX')
+        for u in course_repo.get_users_for_course(cid):
+            
+            results.add(u)
 
     logger.info(f"Resolved {len(results)} unique user(s) across {len(course_ids)} courses.")
 
-    print(f'USERS BY COURSES: {list(results)}')
+    print(f'Users By Courses Results: {list(results)}')
     return list(results)

@@ -4,12 +4,14 @@ from db.repositories.question_repo import QuestionRepository
 logger = logging.getLogger(__name__)
 repo = QuestionRepository()
 
-def endpoint_items(data, term_id=None, course_id=None, quiz_id=None, user_id=None):
+def endpoint_items(data, **kwargs):
     """
     Persist question metadata for a quiz.
     Canvas returns quiz item data (e.g. for New Quizzes API).
     We’ll extract essay questions and whether spell_check is enabled.
     """
+    course_id = kwargs.get('course_id')
+    quiz_id = kwargs.get('quiz_id')
     if not data or not (course_id and quiz_id):
         logger.error("endpoint_items: Invalid input; skipping question persistence.")
         return

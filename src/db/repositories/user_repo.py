@@ -25,32 +25,9 @@ class UserRepository:
         except Exception as e:
             logger.error(f"Error inserting/updating user {user_id}: {e}")
 
-    def link_to_course(self, user_id, course_id):
-        """Link a user to a course (avoids duplicates)."""
-        try:
-            self.conn.execute("""
-                INSERT OR IGNORE INTO user_courses (user_id, course_id)
-                VALUES (?, ?)
-            """, (user_id, course_id))
-            self.conn.commit()
-        except Exception as e:
-            logger.error(f"Error linking user {user_id} to course {course_id}: {e}")
-
     def get_user(self, user_id):
         cur = self.conn.execute("SELECT * FROM user_store WHERE user_id = ?", (str(user_id),))
         return cur.fetchone()
-
-    def get_users_by_course(self, course_id):
-        cur = self.conn.execute("""
-            SELECT u.* FROM user_store u
-            JOIN user_courses uc ON u.user_id = uc.user_id
-            WHERE uc.course_id = ?
-        """, (str(course_id),))
-        return [dict(row) for row in cur.fetchall()]
-    
-    def get_user_courses(self, user_id):
-        cur = self.conn.execute("SELECT course_id FROM user_courses WHERE user_id = ?", (str(user_id),))
-        return [row["course_id"] for row in cur.fetchall()]
 
     def list_all(self):
         cur = self.conn.execute("SELECT * FROM user_store ORDER BY name")
